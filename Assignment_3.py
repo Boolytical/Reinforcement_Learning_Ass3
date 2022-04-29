@@ -11,7 +11,6 @@ from Helper import LearningCurvePlot, smooth
 
 class REINFORCE_Agent:
     """ Agent that uses Monte Carlo Policy-Gradient Methods. """
-
     def __init__(self, env, param_dict: dict):
         """ Set parameters and initialize neural network and optimizer. """
         self.n_states = env.observation_space.shape[0]
