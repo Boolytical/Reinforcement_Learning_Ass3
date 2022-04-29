@@ -19,6 +19,10 @@ def average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, s
             print(f'Repetition: {rep}')
             rewards = actor_critic.act_in_env(epochs = param_dict['epochs'], n_traces=n_traces,
                                               n_timesteps=n_timesteps, param_dict=param_dict)
+            
+            #### Below needed as the act_in_env returns a list that has length equal to epoch and every element is the average of the score per trace in that epoch
+            #### We have to see what is best to do.
+            reward_results = np.empty([n_repetitions, param_dict['epochs']])    # quick solution
             reward_results[rep] = rewards
 
     print('Running one setting takes {} minutes'.format((time.time() - now) / 60))
@@ -29,109 +33,82 @@ def average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, s
     return learning_curve, standard_error
 
 
-def experiment( ):
-    n_repetitions = 20
-    n_traces = 1000
+def experiment(methods: str):
+    n_repetitions = 5
+    n_traces = 500
     n_timesteps = 500
     smoothing_window = 101
 
-    ### Method: REINFORCE
-    method = 'REINFORCE'
-    gamma = 0.99
-    learning_rates = [0.001, 0.025, 0.01]
-    colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
+    if methods == 'REINFORCE and actor-critic':
+        ### Method: REINFORCE
+        method = 'REINFORCE'
+        gamma = 0.99
+        learning_rates = [0.001, 0.025, 0.01]
+        colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
 
-    run = 0
-    Plot = LearningCurvePlot(title=f'Method: {method} --- Results averaged of {n_repetitions} repetitions')
-    for alpha in learning_rates:
-            param_dict = {
-                'alpha': alpha, # Learning-rate
-                'gamma': gamma  # Discount factor
-            }
+        run = 0
+        Plot = LearningCurvePlot(title=f'Method: {method} --- Results averaged of {n_repetitions} repetitions')
+        for alpha in learning_rates:
+                param_dict = {
+                    'alpha': alpha, # Learning-rate
+                    'gamma': gamma  # Discount factor
+                }
 
-            print(f'Running {method}-method with learning rate={alpha} and discount rate={gamma}')
+                print(f'Running {method}-method with learning rate={alpha} and discount rate={gamma}')
 
-            learning_curve, standard_error = average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, smoothing_window, method)
-            Plot.add_curve(x=np.arange(1, len(learning_curve)+1),
-                           y=learning_curve,
-                           std=standard_error,
-                           col=colours[run],
-                           label=r'REINFORCE with $\alpha$={} and $\gamma$={}'.format(alpha, gamma))
-            run += 1
-    Plot.save('REINFORCE.png')
+                learning_curve, standard_error = average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, smoothing_window, method)
+                Plot.add_curve(x=np.arange(1, len(learning_curve)+1),
+                            y=learning_curve,
+                            std=standard_error,
+                            col=colours[run],
+                            label=r'REINFORCE with $\alpha$={} and $\gamma$={}'.format(alpha, gamma))
+                run += 1
+        Plot.save('REINFORCE.png')
 
-    ### Method: Actor-critic with bootstrapping
-    method = 'Actor-critic'
-    epochs = 500
-    learning_rates = [(0.001, 0.001), (0.025, 0.025), (0.01, 0.01)]
-    n_depth = 30
-    option = 'bootstrapping'
-    colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
+        ### Method: Actor-critic with bootstrapping
+        method = 'Actor-critic'
+        n_traces = 5    # TODO: we use for this method epochs with each epoch having a 'small' number of traces
+        epochs = 500
+        learning_rates = [(0.001, 0.001), (0.025, 0.025), (0.01, 0.01)]
+        n_depth = 10
+        option = 'bootstrapping'
+        colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
 
-    run = 0
-    Plot = LearningCurvePlot(title=f'Method: {method} --- Results averaged of {n_repetitions} repetitions')
-    for alpha in learning_rates:
-            param_dict = {
-                'epochs': epochs,
-                'alpha_1': alpha[0],
-                'alpha_2': alpha[1],
-                'n_depth': n_depth,
-                'option': option
-            }
+        run = 0
+        Plot = LearningCurvePlot(title=f'Method: {method} --- Results averaged of {n_repetitions} repetitions')
+        for alpha in learning_rates:
+                param_dict = {
+                    'epochs': epochs,
+                    'alpha_1': alpha[0],
+                    'alpha_2': alpha[1],
+                    'n_depth': n_depth,
+                    'option': option
+                }
 
-            print(f'Running {method}-method with learning rate_actor ={alpha[0]} and  learning rate_critic ={alpha[1]}')
+                print(f'Running {method}-method with learning rate_actor ={alpha[0]} and  learning rate_critic ={alpha[1]}')
 
-            learning_curve, standard_error = average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, smoothing_window, method)
-            Plot.add_curve(x=np.arange(1, len(learning_curve)+1),
-                           y=learning_curve,
-                           std=standard_error,
-                           col=colours[run],
-                           label=r'Actor-critic with $\alpha_actor$={} and $\alpha_critic={}'.format(alpha[0], alpha[1]))
-            run += 1
-    Plot.save('Actor_critic_bootstrapping.png')
+                learning_curve, standard_error = average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, smoothing_window, method)
+                Plot.add_curve(x=np.arange(1, len(learning_curve)+1),
+                            y=learning_curve,
+                            std=standard_error,
+                            col=colours[run],
+                            label=r'Actor-critic with $\alpha_actor$={} and $\alpha_critic={}'.format(alpha[0], alpha[1]))
+                run += 1
+        Plot.save('Actor_critic_bootstrapping.png')
+        
+    else:   # adjust this when below methods implemented
+        
+        ### Method: Actor-critic with baseline subtraction
+        method = 'baseline_subtraction'
+        epochs = 500
+        learning_rates = [(0.001, 0.001), (0.025, 0.025), (0.01, 0.01)]
+        n_depth = 30
+        option = 'bootstrapping'
+        colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
 
-    ### Method: Actor-critic with baseline subtraction
-    method = 'baseline_subtraction'
-    epochs = 500
-    learning_rates = [(0.001, 0.001), (0.025, 0.025), (0.01, 0.01)]
-    n_depth = 30
-    option = 'bootstrapping'
-    colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
-
-    run = 0
-    Plot = LearningCurvePlot(title=f'Method: {method} --- Results averaged of {n_repetitions} repetitions')
-    for alpha in learning_rates:
-        param_dict = {
-            'epochs': epochs,
-            'alpha_1': alpha[0],
-            'alpha_2': alpha[1],
-            'n_depth': n_depth,
-            'option': option
-        }
-
-        print(f'Running {method}-method with learning rate_actor ={alpha[0]} and  learning rate_critic ={alpha[1]}')
-
-        learning_curve, standard_error = average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict,
-                                                                  smoothing_window, method)
-        Plot.add_curve(x=np.arange(1, len(learning_curve) + 1),
-                       y=learning_curve,
-                       std=standard_error,
-                       col=colours[run],
-                       label=r'Actor-critic with $\alpha_actor$={} and $\alpha_critic={}'.format(alpha[0], alpha[1]))
-        run += 1
-    Plot.save('Actor_critic_baseline_subtraction.png')
-
-    ### Method: Actor-critic with bootstrapping and baseline subtraction
-    method = 'boostrapping_baseline'
-    epochs = 500
-    learning_rates = [(0.001, 0.001), (0.025, 0.025), (0.01, 0.01)]
-    n_depth = 30
-    option = 'bootstrapping'
-    colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
-
-    run = 0
-    Plot = LearningCurvePlot(title=f'Method: {method} --- Results averaged of {n_repetitions} repetitions')
-    for alpha in learning_rates:
+        run = 0
+        Plot = LearningCurvePlot(title=f'Method: {method} --- Results averaged of {n_repetitions} repetitions')
+        for alpha in learning_rates:
             param_dict = {
                 'epochs': epochs,
                 'alpha_1': alpha[0],
@@ -142,14 +119,45 @@ def experiment( ):
 
             print(f'Running {method}-method with learning rate_actor ={alpha[0]} and  learning rate_critic ={alpha[1]}')
 
-            learning_curve, standard_error = average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, smoothing_window, method)
-            Plot.add_curve(x=np.arange(1, len(learning_curve)+1),
-                           y=learning_curve,
-                           std=standard_error,
-                           col=colours[run],
-                           label=r'Actor-critic with $\alpha_actor$={} and $\alpha_critic={}'.format(alpha[0], alpha[1]))
+            learning_curve, standard_error = average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict,
+                                                                    smoothing_window, method)
+            Plot.add_curve(x=np.arange(1, len(learning_curve) + 1),
+                        y=learning_curve,
+                        std=standard_error,
+                        col=colours[run],
+                        label=r'Actor-critic with $\alpha_actor$={} and $\alpha_critic={}'.format(alpha[0], alpha[1]))
             run += 1
-    Plot.save('Actor_critic_both.png')
+        Plot.save('Actor_critic_baseline_subtraction.png')
+
+        ### Method: Actor-critic with bootstrapping and baseline subtraction
+        method = 'bootstrapping_baseline'
+        epochs = 500
+        learning_rates = [(0.001, 0.001), (0.025, 0.025), (0.01, 0.01)]
+        n_depth = 30
+        option = 'bootstrapping'
+        colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
+
+        run = 0
+        Plot = LearningCurvePlot(title=f'Method: {method} --- Results averaged of {n_repetitions} repetitions')
+        for alpha in learning_rates:
+                param_dict = {
+                    'epochs': epochs,
+                    'alpha_1': alpha[0],
+                    'alpha_2': alpha[1],
+                    'n_depth': n_depth,
+                    'option': option
+                }
+
+                print(f'Running {method}-method with learning rate_actor ={alpha[0]} and  learning rate_critic ={alpha[1]}')
+
+                learning_curve, standard_error = average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, smoothing_window, method)
+                Plot.add_curve(x=np.arange(1, len(learning_curve)+1),
+                            y=learning_curve,
+                            std=standard_error,
+                            col=colours[run],
+                            label=r'Actor-critic with $\alpha_actor$={} and $\alpha_critic={}'.format(alpha[0], alpha[1]))
+                run += 1
+        Plot.save('Actor_critic_both.png')
 
 if __name__ == '__main__':
-    experiment()
+    experiment(methods='REINFORCE and actor-critic')    # added this argument to run only implemented methods, can be removed later on

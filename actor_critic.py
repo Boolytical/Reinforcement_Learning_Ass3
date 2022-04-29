@@ -136,6 +136,8 @@ def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
     env = gym.make('CartPole-v1')                   # create environment of CartPole-v1
     agent = Actor_Critic_Agent(env, param_dict)     # initiate the agent
     
+    avg_per_epoch = []
+    
     for e in range(epochs):
         env_scores = []                     # shows trace length over training time TODO: probably need to collect per epoch as well, otherwise only last epoch rewards are returned
         for m in range(n_traces):
@@ -170,14 +172,15 @@ def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
             
             agent.forget()
 
-        print('Epoch {}: {}'.format(e, env_scores))
+        print('Epoch {}     Average Score: {}'.format(e, np.mean(env_scores)))
+        avg_per_epoch.append(np.mean(env_scores))
         
     env.close()
-    return env_scores
+    return avg_per_epoch
     
     
 ##### Quick way to test #####
-
+"""
 param_dict = {
     'alpha_1': 0.001,
     'alpha_2': 0.001,
@@ -185,3 +188,4 @@ param_dict = {
     'option': 'bootstrapping'}
 
 act_in_env(epochs=500, n_traces=5, n_timesteps=500, param_dict=param_dict)
+"""
