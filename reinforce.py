@@ -11,11 +11,11 @@ class REINFORCE_Agent:
         self.n_actions = env.action_space.n
         self.learning_rate = param_dict['alpha']
         self.gamma = param_dict['gamma']
-        
-        self.memory = []    # used for memorizing traces
-        
+
+        self.memory = []  # used for memorizing traces
+
         self.model = self._initialize_nn()
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr = self.learning_rate)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
 
     def _initialize_nn(self):
         """ Initialize neural network. """
@@ -28,12 +28,12 @@ class REINFORCE_Agent:
             torch.nn.Linear(256, self.n_actions),
             torch.nn.Softmax(dim=0))
 
-        return model    # return initialized model
-    
+        return model  # return initialized model
+
     def memorize(self, s, a, r):
         """ Memorize state, action and reward. """
         self.memory.append((s, a, r))
-        
+
     def forget(self):
         """ Empty memory. """
         self.memory = []
@@ -44,57 +44,58 @@ class REINFORCE_Agent:
         action = np.random.choice(np.arange(0, self.n_actions), p=action_probability)
         return action
 
+    def loss (self):
+        """ Return the loss """
+        # Estimate the return of the trace
+        R_t = torch.Tensor([r for (s, a, r) in self.memory]).flip(dims=(0,))
+
+        R_list = []
+        # Total return per timestep of the trace
+        for i in range(len(self.memory)):
+            R_elements = [pow(self.gamma, idx - i - 1) * R_t[idx - 1].numpy() for idx in range(i + 1, len(self.memory) + 1)]
+            R_list.append(sum(R_elements))
+
+        U_theta = torch.FloatTensor(R_list) # Expected reward
+        U_theta = U_theta / U_theta.max() # Normalized expected reward
+
+        all_states = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
+        all_actions = torch.Tensor(np.array([a for (s, a, r) in self.memory]))
+
+        predictions = self.model(all_states)
+        probabilities = predictions.gather(dim=1, index=all_actions.long().view(-1, 1)).squeeze()
+
+        # Update the weights of the policy
+        loss = - torch.sum(torch.log(probabilities) * U_theta)
+        return loss
 
 
-def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
-    env = gym.make('CartPole-v1')               # create environment of CartPole-v1
-    agent = REINFORCE_Agent(env, param_dict)    # initiate the agent
+def act_in_env(n_traces: int, n_timesteps: int, param_dict: dict):
+    env = gym.make('CartPole-v1')  # create environment of CartPole-v1
+    agent = REINFORCE_Agent(env, param_dict)  # initiate the agent
 
-    
-    
-    for e in range(epochs):
-        scores_per_trace = []                     # shows trace length over training time
-        
-        gradient =  0   # initial gradient
-        for m in range(n_traces):
-            state = env.reset()             # reset environment and get initial state
+    env_scores = []  # shows trace length over training time
+    for m in range(n_traces):
+        state = env.reset()  # reset environment and get initial state
 
-            ##### Use current policy to collect a trace
-            for t in range(n_timesteps):
-                action = agent.choose_action(s=state)  
-                state_next, _, done, _ = env.step(action)
-                agent.memorize(s=state, a=action, r=t+1)
-                
-                state = state_next
+        # Use the policy to collect a trace
+        for t in range(n_timesteps):
+            action = agent.choose_action(s=state)
+            state_next, _, done, _ = env.step(action)
+            agent.memorize(s=state, a=action, r=t + 1)
+            state = state_next
 
-                if done:
-                    scores_per_trace.append(t+1)
-                    break
-            
-            r_t = torch.Tensor([r for (s, a, r) in agent.memory]).flip(dims=(0, ))
-            a_t = torch.Tensor(np.array([a for (s, a, r) in agent.memory]))
-            s_t = torch.Tensor(np.array([s for (s, a, r) in agent.memory]))
-            
-            R = 0
-            for t in reversed(range(len(agent.memory))):
-                R = r_t[t] + agent.gamma * R    # go backwards through whole trace
-                
-                prediction = agent.model(s_t[t])
-                probability = prediction[a_t[t].long()]
-                
-                gradient -= R * torch.log(probability)  # minimizing 
-            
+            if done:
+                env_scores.append(t + 1)
+                break
+
+        loss = agent.loss()
         agent.optimizer.zero_grad()
-        gradient.backward()
+        loss.backward()
         agent.optimizer.step()
-        
-        print('Epoch {}: {}'.format(e, scores_per_trace))
-        
+
+        if m % 50 == 0 and m > 0:
+            print('Trace {}\tAverage Score: {:.2f}'.format(m, np.mean(env_scores[-50:-1])))
+
+        agent.forget()
     env.close()
-
-param_dict = {
-    'alpha': 0.001,             # Learning-rate
-    'gamma': 0.99               # Discount factor
-}
-
-act_in_env(epochs=1000, n_traces=1, n_timesteps=500, param_dict=param_dict)
+    return env_scores

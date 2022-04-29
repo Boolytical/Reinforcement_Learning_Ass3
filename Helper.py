@@ -7,7 +7,6 @@ from scipy.signal import savgol_filter
 
 
 class LearningCurvePlot:
-
     def __init__(self, title=None):
         self.fig, self.ax = plt.subplots()
 
@@ -19,7 +18,6 @@ class LearningCurvePlot:
 
     # Add new curve to the plot figure with given label name (optional) with rewards as y values
     def add_curve(self, x, y, col, std=None, label=None):
-
         if std is not None:
             if label:
                 self.ax.plot(y, label=label)
