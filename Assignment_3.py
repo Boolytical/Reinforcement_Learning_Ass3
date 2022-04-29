@@ -111,8 +111,7 @@ def act_in_env(n_traces: int, n_timesteps: int, param_dict: dict):
 
 
 def average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, smoothing_window):
-
-    reward_results = np.empty([n_repetitions,n_traces]) # Result array
+    reward_results = np.empty([n_repetitions, n_traces]) # Result array
     now = time.time()
 
     for rep in range(n_repetitions):
@@ -129,16 +128,9 @@ def average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, s
 
 
 def experiment( ):
-
     n_repetitions = 20
     n_traces = 1000
     n_timesteps = 500
-
-    # param_dict = {
-    #     'alpha': 0.001,  # Learning-rate
-    #     'gamma': 0.99  # Discount factor
-    # }
-
     smoothing_window = 101
 
     ### Method: REINFORCE
@@ -150,9 +142,8 @@ def experiment( ):
     run = 0
     Plot = LearningCurvePlot(title=f'Method: {method} --- Results averaged of {n_repetitions} repetitions')
     for alpha in learning_rates:
-
             param_dict = {
-                'alpha': alpha,  # Learning-rate
+                'alpha': alpha, # Learning-rate
                 'gamma': gamma  # Discount factor
             }
 
@@ -170,7 +161,3 @@ def experiment( ):
 
 if __name__ == '__main__':
     experiment()
-
-
-
-
