@@ -171,8 +171,9 @@ def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
             agent.optimizer_critic.step()
             
             agent.forget()
-
-        print('Epoch {}     Average Score: {}'.format(e, np.mean(env_scores)))
+        
+        if e % 50 == 0 and e > 0:
+            print('Epoch {}     Average Score: {}'.format(e, np.mean(env_scores)))
         avg_per_epoch.append(np.mean(env_scores))
         
     env.close()
