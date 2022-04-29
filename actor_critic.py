@@ -12,8 +12,10 @@ class Actor_Critic_Agent:
         
         self.learning_rate_actor = param_dict['alpha_1']
         self.learning_rate_critic = param_dict['alpha_2']
+        self.n_depth = param_dict['n_depth']
 
         self.memory = []    # used for memorizing traces
+        self.Q_values = []  # used for memorizing the Q-values
         
         self.model_actor = self._initialize_nn(type='actor')
         self.model_critic = self._initialize_nn(type='critic')
@@ -38,7 +40,6 @@ class Actor_Critic_Agent:
                 torch.nn.Linear(self.n_states, 256),
                 torch.nn.ReLU(),
                 torch.nn.Linear(256, self.n_actions))
-
         return model    # return initialized model
     
     def memorize(self, s, a, r):
@@ -49,36 +50,41 @@ class Actor_Critic_Agent:
         """ Empty memory. """
         self.memory = []
 
+    def forget_Q_values (self):
+        """ Empty memory of Q_values """
+        self.Q_values = []
+
     def choose_action(self, s):
         """ Return action and probability distribution given state. """
         action_probability = self.model_actor(torch.from_numpy(s).float()).detach().numpy()
         action = np.random.choice(np.arange(0, self.n_actions), p=action_probability)
         return action
 
+    def Q_values_calc (self, t):
+        """ Save the Q-values for every timestep until n_depth in memory"""
+        r_t = torch.Tensor([r for (s, a, r) in self.memory]).flip(dims=(0,))
+        s_t = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
+
+        Q_value = 0
+        # Total return per timestep of the trace
+        for k in range(self.n_depth):
+            Q_value += r_t[t + k] + self.model_critic(s_t[t + self.n_depth])
+        self.Q_values.append(Q_value)
+
     def loss (self):
         """ Return the loss """
-        # Estimate the return of the trace
-        R_t = torch.Tensor([r for (s, a, r) in self.memory]).flip(dims=(0,))
+        a_t = torch.Tensor(np.array([a for (s, a, r) in self.memory]))
+        s_t = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
 
-        R_list = []
-        # Total return per timestep of the trace
-        for i in range(len(self.memory)):
-            R_elements = [pow(self.gamma, idx - i - 1) * R_t[idx - 1].numpy() for idx in range(i + 1, len(self.memory) + 1)]
-            R_list.append(sum(R_elements))
-
-        U_theta = torch.FloatTensor(R_list) # Expected reward
-        U_theta = U_theta / U_theta.max() # Normalized expected reward
-
-        all_states = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
-        all_actions = torch.Tensor(np.array([a for (s, a, r) in self.memory]))
-
-        predictions = self.model(all_states)
-        probabilities = predictions.gather(dim=1, index=all_actions.long().view(-1, 1)).squeeze()
+        predictions = self.model_actor(s_t)
+        probabilities = predictions.gather(dim=1, index=a_t.long().view(-1, 1)).squeeze()
 
         # Update the weights of the policy
-        loss = - torch.sum(torch.log(probabilities) * U_theta)
-        return loss
+        loss_actor = - self.learning_rate_actor * torch.sum(self.Q_values * torch.sum(torch.log(probabilities)))
+        loss_critic = self.learning_rate_critic * torch.sum(self.Q_values - self.model_critic(s_t))**2
+        self.forget_Q_values()
 
+        return loss_actor, loss_critic
 
 
 def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
@@ -86,9 +92,7 @@ def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
     agent = Actor_Critic_Agent(env, param_dict)     # initiate the agent
 
     for e in range(epochs):
-        scores_per_trace = []                     # shows trace length over training time
-        
-        gradient =  0   # initial gradient
+        env_scores = []                     # shows trace length over training time
         for m in range(n_traces):
             state = env.reset()             # reset environment and get initial state
 
@@ -100,23 +104,24 @@ def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
                 state = state_next
 
                 if done:
-                    scores_per_trace.append(t+1)
+                    for t in range(n_timesteps):
+                        agent.Q_values_calc(t=t)
+                    env_scores.append(t+1)
                     break
-            
-            r_t = torch.Tensor([r for (s, a, r) in agent.memory]).flip(dims=(0, ))
-            a_t = torch.Tensor(np.array([a for (s, a, r) in agent.memory]))
-            s_t = torch.Tensor(np.array([s for (s, a, r) in agent.memory]))
-            
-            R = 0
-            for t in range(len(agent.memory)):
-                print(t)
-                # gradient_actor -= R * torch.log(probability)  # minimizing 
-                # gradient_critic
-            
-        #agent.optimizer.zero_grad()
-        #gradient.backward()
-        #agent.optimizer.step()
-        
-        print('Epoch {}: {}'.format(e, scores_per_trace))
-        
-    env.close()
+
+            loss_actor, loss_critic = agent.loss()
+
+            # Update actor NN
+            agent.optimizer_actor.zero_grad()
+            loss_actor.backward()
+            agent.optimizer_actor.step()
+
+            # Update critic NN
+            agent.optimizer_critic.zero_grad()
+            loss_critic.backward()
+            agent.optimizer_critic.step()
+
+        print('Epoch {}: {}'.format(e, env_scores))
+        agent.forget()
+        env.close()
+        return env_scores

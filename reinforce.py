@@ -58,11 +58,11 @@ class REINFORCE_Agent:
         U_theta = torch.FloatTensor(R_list) # Expected reward
         U_theta = U_theta / U_theta.max() # Normalized expected reward
 
-        all_states = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
-        all_actions = torch.Tensor(np.array([a for (s, a, r) in self.memory]))
+        s_t = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
+        a_t = torch.Tensor(np.array([a for (s, a, r) in self.memory]))
 
-        predictions = self.model(all_states)
-        probabilities = predictions.gather(dim=1, index=all_actions.long().view(-1, 1)).squeeze()
+        predictions = self.model(s_t)
+        probabilities = predictions.gather(dim=1, index=a_t.long().view(-1, 1)).squeeze()
 
         # Update the weights of the policy
         loss = - torch.sum(torch.log(probabilities) * U_theta)
