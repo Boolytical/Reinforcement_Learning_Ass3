@@ -12,8 +12,7 @@ class Actor_Critic_Agent:
         
         self.learning_rate_actor = param_dict['alpha_1']
         self.learning_rate_critic = param_dict['alpha_2']
-        self.gamma = param_dict['gamma']
-        
+
         self.memory = []    # used for memorizing traces
         
         self.model_actor = self._initialize_nn(type='actor')
@@ -33,13 +32,13 @@ class Actor_Critic_Agent:
                 torch.nn.ReLU(),
                 torch.nn.Linear(256, self.n_actions),
                 torch.nn.Softmax(dim=0))
+
         elif type == 'critic':
             model = torch.nn.Sequential(
                 torch.nn.Linear(self.n_states, 256),
                 torch.nn.ReLU(),
-                torch.nn.Linear(256, self.n_actions),
-                torch.nn.Linear(dim=0))
-            
+                torch.nn.Linear(256, self.n_actions))
+
         return model    # return initialized model
     
     def memorize(self, s, a, r):
@@ -56,11 +55,35 @@ class Actor_Critic_Agent:
         action = np.random.choice(np.arange(0, self.n_actions), p=action_probability)
         return action
 
+    def loss (self):
+        """ Return the loss """
+        # Estimate the return of the trace
+        R_t = torch.Tensor([r for (s, a, r) in self.memory]).flip(dims=(0,))
+
+        R_list = []
+        # Total return per timestep of the trace
+        for i in range(len(self.memory)):
+            R_elements = [pow(self.gamma, idx - i - 1) * R_t[idx - 1].numpy() for idx in range(i + 1, len(self.memory) + 1)]
+            R_list.append(sum(R_elements))
+
+        U_theta = torch.FloatTensor(R_list) # Expected reward
+        U_theta = U_theta / U_theta.max() # Normalized expected reward
+
+        all_states = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
+        all_actions = torch.Tensor(np.array([a for (s, a, r) in self.memory]))
+
+        predictions = self.model(all_states)
+        probabilities = predictions.gather(dim=1, index=all_actions.long().view(-1, 1)).squeeze()
+
+        # Update the weights of the policy
+        loss = - torch.sum(torch.log(probabilities) * U_theta)
+        return loss
+
 
 
 def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
-    env = gym.make('CartPole-v1')               # create environment of CartPole-v1
-    agent = Actor_Critic_Agent(env, param_dict)    # initiate the agent
+    env = gym.make('CartPole-v1')                   # create environment of CartPole-v1
+    agent = Actor_Critic_Agent(env, param_dict)     # initiate the agent
 
     for e in range(epochs):
         scores_per_trace = []                     # shows trace length over training time
@@ -74,7 +97,6 @@ def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
                 action = agent.choose_action(s=state)  
                 state_next, _, done, _ = env.step(action)
                 agent.memorize(s=state, a=action, r=t+1)
-                
                 state = state_next
 
                 if done:
@@ -102,7 +124,6 @@ def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
 param_dict = {
     'alpha_1': 0.001,   # learning rate actor
     'alpha_2': 0.001,   # learning rate critic     
-    'gamma': 0.99       # discount factor
 }
 
 act_in_env(epochs=500, n_traces=1, n_timesteps=500, param_dict=param_dict)
