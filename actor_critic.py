@@ -120,10 +120,3 @@ def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
         print('Epoch {}: {}'.format(e, scores_per_trace))
         
     env.close()
-
-param_dict = {
-    'alpha_1': 0.001,   # learning rate actor
-    'alpha_2': 0.001,   # learning rate critic     
-}
-
-act_in_env(epochs=500, n_traces=1, n_timesteps=500, param_dict=param_dict)

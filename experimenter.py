@@ -4,7 +4,7 @@ import numpy as np
 import time
 from Helper import LearningCurvePlot, smooth
 
-def average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, smoothing_window, method):
+def average_over_repetitions(epochs, n_repetitions, n_traces, n_timesteps, param_dict, smoothing_window, method):
     reward_results = np.empty([n_repetitions, n_traces]) # Result array
     now = time.time()
 
@@ -15,9 +15,9 @@ def average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, s
             reward_results[rep] = rewards
 
     elif method == 'Actor-critic':
-        for rep in range(n_repetitions):
+        for rep in range(n_repetitions): 
             print(f'Repetition: {rep}')
-            rewards = actor_critic.act_in_env(n_traces=n_traces, n_timesteps=n_timesteps, param_dict=param_dict)
+            rewards = actor_critic.act_in_env(epochs = epochs, n_traces=n_traces, n_timesteps=n_timesteps, param_dict=param_dict)
             reward_results[rep] = rewards
 
     print('Running one setting takes {} minutes'.format((time.time() - now) / 60))
@@ -61,6 +61,7 @@ def experiment( ):
 
     ### Method: Actor-critic
     method = 'Actor-critic'
+    epochs = 500
     learning_rates = [(0.001, 0.001), (0.025, 0.025), (0.01, 0.01)]
     colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
 
@@ -74,7 +75,7 @@ def experiment( ):
 
             print(f'Running {method}-method with learning rate_1 ={alpha[0]} and  learning rate_2 ={alpha[1]}')
 
-            learning_curve, standard_error = average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, smoothing_window, method)
+            learning_curve, standard_error = average_over_repetitions(epochs, n_repetitions, n_traces, n_timesteps, param_dict, smoothing_window, method)
             Plot.add_curve(x=np.arange(1, len(learning_curve)+1),
                            y=learning_curve,
                            std=standard_error,
