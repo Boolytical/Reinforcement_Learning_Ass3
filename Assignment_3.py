@@ -11,7 +11,6 @@ from Helper import LearningCurvePlot, smooth
 
 class REINFORCE_Agent:
     """ Agent that uses Monte Carlo Policy-Gradient Methods. """
-
     def __init__(self, env, param_dict: dict):
         """ Set parameters and initialize neural network and optimizer. """
         self.n_states = env.observation_space.shape[0]
@@ -49,7 +48,32 @@ class REINFORCE_Agent:
         """ Return action and probability distribution given state. """
         action_probability = self.model(torch.from_numpy(s).float()).detach().numpy()
         action = np.random.choice(np.arange(0, self.n_actions), p=action_probability)
-        return action_probability, action
+        return action
+
+    def loss (self):
+        """ Return the loss """
+        # Estimate the return of the trace
+        R_t = torch.Tensor([r for (s, a, r) in self.memory]).flip(dims=(0,))  ## Is this the R_t? print it ##
+
+        R_list = []
+        # Total return per timestep of the trace
+        for i in range(len(self.memory)):
+            R_elements = [pow(self.gamma, idx - i - 1) * R_t[idx - 1].numpy() for idx in range(i + 1, len(self.memory) + 1)]
+            R_list.append(sum(R_elements))
+
+        U_theta = torch.FloatTensor(R_list)
+        U_theta = U_theta / U_theta.max()
+
+        all_states = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
+        all_actions = torch.Tensor(np.array([a for (s, a, r) in self.memory]))
+
+        predictions = self.model(all_states)
+        probabilities = predictions.gather(dim=1, index=all_actions.long().view(-1, 1)).squeeze()
+
+        # Update the weights of the policy
+        loss = - torch.sum(torch.log(probabilities) * U_theta)
+        return loss
+
 
 
 def act_in_env(n_traces: int, n_timesteps: int, param_dict: dict):
@@ -62,37 +86,16 @@ def act_in_env(n_traces: int, n_timesteps: int, param_dict: dict):
 
         # Use the policy to collect a trace
         for t in range(n_timesteps):
-            action_probability, action = agent.choose_action(s=state)  ## TODO action_probability not used yet, maybe consider using this instead of recalculating in line 87 ##
+            action = agent.choose_action(s=state)
             state_next, _, done, _ = env.step(action)
             agent.memorize(s=state, a=action, r=t + 1)
-
             state = state_next
 
             if done:
                 env_scores.append(t + 1)
                 break
 
-        # Estimate the return of the trace
-        R_t = torch.Tensor([r for (s, a, r) in agent.memory]).flip(dims=(0,))  ## Is this the R_t? print it ##
-
-        R_list = []
-        # Total return per timestep of the trace
-        for i in range(len(agent.memory)):
-            R_elements = [pow(agent.gamma, idx - i - 1) * R_t[idx - 1].numpy() for idx in
-                          range(i + 1, len(agent.memory) + 1)]
-            R_list.append(sum(R_elements))
-
-        U_theta = torch.FloatTensor(R_list)
-        #U_theta /= U_theta.max()  ## Why is this needed? -- I don't think it is needed##
-
-        all_states = torch.Tensor(np.array([s for (s, a, r) in agent.memory]))
-        all_actions = torch.Tensor(np.array([a for (s, a, r) in agent.memory]))
-
-        predictions = agent.model(all_states)
-        probabilities = predictions.gather(dim=1, index=all_actions.long().view(-1, 1)).squeeze()
-
-        # Update the weights of the policy
-        loss = - torch.sum(torch.log(probabilities) * U_theta)
+        loss = agent.loss()
 
         agent.optimizer.zero_grad()
         loss.backward()
@@ -102,7 +105,6 @@ def act_in_env(n_traces: int, n_timesteps: int, param_dict: dict):
             print('Trace {}\tAverage Score: {:.2f}'.format(m, np.mean(env_scores[-50:-1])))
 
         agent.forget()
-
     env.close()
     return env_scores
 
