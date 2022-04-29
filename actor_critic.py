@@ -65,32 +65,68 @@ class Actor_Critic_Agent:
         """ Save the Q-values for every timestep until n_depth in memory"""
         r_t = torch.Tensor([r for (s, a, r) in self.memory]).flip(dims=(0,))
         s_t = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
+        
+        # print('Calculate Q values of timestep {} of total of {} timesteps with depth of {}'.format(t, len(self.memory), self.n_depth))
+        
+        ##### Avoid that index exceeds length of memorized states
+        if t + self.n_depth < len(self.memory):
+            
+            s_t_depth = torch.Tensor(s_t[t + self.n_depth])
+            expected_return_per_action = self.model_critic(s_t_depth)    # outputs return values for action 0 and 1
+            Value = expected_return_per_action.max()    # to get Value of s_t+n, get highest return of output nodes
 
-        Q_value = 0
-        # Total return per timestep of the trace
-        for k in range(self.n_depth):
-            Q_value += r_t[t + k] + self.model_critic(s_t[t + self.n_depth])
-        self.Q_values.append(Q_value)
+            Q_value = 0 # Q_n(s_t, a_t)
+            # Total return per timestep of the trace
+            for k in range(self.n_depth - 1):   # sum until k = n - 1 (see Alg. 4.3, p 100)
+                Q_value += r_t[t + k] + Value
+            
+            # print('Append new Q_value of timestep {}: {}'.format(t, Q_value))
+            self.Q_values.append(Q_value)
+            
+        else:
+            self.Q_values.append(0) # what to do with these cases?
 
     def loss (self):
-        """ Return the loss """
+        """ Return the loss for actor and critic. """
         a_t = torch.Tensor(np.array([a for (s, a, r) in self.memory]))
         s_t = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
 
         predictions = self.model_actor(s_t)
-        probabilities = predictions.gather(dim=1, index=a_t.long().view(-1, 1)).squeeze()
+        probabilities = predictions.gather(dim=1, index=a_t.long().view(-1, 1)).squeeze()   # get policy pi_actor(a_t|s_t) for each timestep
 
-        # Update the weights of the policy
-        A_n = self.Q_values - self.model_critic(s_t)
+        ##### Update the weights of the policy
+        
+        ## Advantage: A_n = Q_n(s_t, a_t) - V_critic(s_t) with V(s_t) = max_a (Q(s_t, a_t))
+        all_return_values = self.model_critic(s_t)
+        # print('All return values predicted by critic {}'.format(all_return_values))
+        
+        Value_t = torch.max(all_return_values, 1).values
+        Q_t = torch.Tensor(self.Q_values)   # convert to tensor
+        
+        # print('Q_values for all timesteps {}'.format(Q_t))
+        # print('Values for all timesteps {}'.format(Value_t))
+        
+        ##### Sometimes length of Q values list is smaller than of Values list as the depth conflicts if t+depth > len(memory)
+        A_n = Q_t - Value_t
 
         if self.option == 'bootstrapping':
-            loss_actor = - self.learning_rate_actor * torch.sum(self.Q_values * torch.sum(torch.log(probabilities)))
+            # print('Q_values is {}'.format(self.Q_values))
+            # print('Policy is {}'.format(torch.log(probabilities)))
+            
+            ##### Removed learning rates as they are already included in Adam optimizers. Do we need to add it again at calculation of loss below? Otherwise then can be included again here
+            loss_actor = - torch.sum(Q_t * torch.sum(torch.log(probabilities)))
+            loss_critic = torch.sum(pow(Q_t - Value_t, 2))
+            
         elif self.option == 'baseline_subtraction':
-            loss_actor = - self.learning_rate_actor * torch.sum(A_n * torch.sum(torch.log(probabilities)))
-        elif self.option == 'boostrapping_baseline':
+            raise ValueError('{} not yet fully implemented'.format(self.option))
+            # loss_actor = - torch.sum(A_n * torch.sum(torch.log(probabilities)))
+        elif self.option == 'bootstrapping_baseline':
             ## TO DO: implement this loss ##
+            raise ValueError('{} not yet implemented'.format(self.option))
+        else:
+            raise ValueError('{} does not exist as method'.format(self.option))
 
-        loss_critic = self.learning_rate_critic * torch.sum(A_n)**2
+        # loss_critic = torch.sum(A_n)**2
         self.forget_Q_values()
 
         return loss_actor, loss_critic
@@ -99,9 +135,9 @@ class Actor_Critic_Agent:
 def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
     env = gym.make('CartPole-v1')                   # create environment of CartPole-v1
     agent = Actor_Critic_Agent(env, param_dict)     # initiate the agent
-
+    
     for e in range(epochs):
-        env_scores = []                     # shows trace length over training time
+        env_scores = []                     # shows trace length over training time TODO: probably need to collect per epoch as well, otherwise only last epoch rewards are returned
         for m in range(n_traces):
             state = env.reset()             # reset environment and get initial state
 
@@ -113,13 +149,15 @@ def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
                 state = state_next
 
                 if done:
-                    for t in range(n_timesteps):
-                        agent.Q_values_calc(t=t)
+                    for t in range(len(agent.memory)):  # depending on performance, trace length can differ from fixed n_timesteps of trace
+                        agent.Q_values_calc(t=t)    # if done, then calculate for every t Q_n(s_t, a_t)
+                        
                     env_scores.append(t+1)
                     break
 
-            loss_actor, loss_critic = agent.loss()
+            loss_actor, loss_critic = agent.loss()  # after trace is done, calculate loss for actor and critic
 
+            ##### After every trace, update networks
             # Update actor NN
             agent.optimizer_actor.zero_grad()
             loss_actor.backward()
@@ -129,8 +167,21 @@ def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
             agent.optimizer_critic.zero_grad()
             loss_critic.backward()
             agent.optimizer_critic.step()
+            
+            agent.forget()
 
         print('Epoch {}: {}'.format(e, env_scores))
-        agent.forget()
-        env.close()
-        return env_scores
+        
+    env.close()
+    return env_scores
+    
+    
+##### Quick way to test #####
+
+param_dict = {
+    'alpha_1': 0.001,
+    'alpha_2': 0.001,
+    'n_depth': 4,
+    'option': 'bootstrapping'}
+
+act_in_env(epochs=500, n_traces=5, n_timesteps=500, param_dict=param_dict)
