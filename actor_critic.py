@@ -13,6 +13,7 @@ class Actor_Critic_Agent:
         self.learning_rate_actor = param_dict['alpha_1']
         self.learning_rate_critic = param_dict['alpha_2']
         self.n_depth = param_dict['n_depth']
+        self.option = param_dict['option']
 
         self.memory = []    # used for memorizing traces
         self.Q_values = []  # used for memorizing the Q-values
@@ -80,8 +81,16 @@ class Actor_Critic_Agent:
         probabilities = predictions.gather(dim=1, index=a_t.long().view(-1, 1)).squeeze()
 
         # Update the weights of the policy
-        loss_actor = - self.learning_rate_actor * torch.sum(self.Q_values * torch.sum(torch.log(probabilities)))
-        loss_critic = self.learning_rate_critic * torch.sum(self.Q_values - self.model_critic(s_t))**2
+        A_n = self.Q_values - self.model_critic(s_t)
+
+        if self.option == 'bootstrapping':
+            loss_actor = - self.learning_rate_actor * torch.sum(self.Q_values * torch.sum(torch.log(probabilities)))
+        elif self.option == 'baseline_subtraction':
+            loss_actor = - self.learning_rate_actor * torch.sum(A_n * torch.sum(torch.log(probabilities)))
+        elif self.option == 'boostrapping_baseline':
+            ## TO DO: implement this loss ##
+
+        loss_critic = self.learning_rate_critic * torch.sum(A_n)**2
         self.forget_Q_values()
 
         return loss_actor, loss_critic

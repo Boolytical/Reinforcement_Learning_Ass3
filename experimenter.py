@@ -65,6 +65,7 @@ def experiment( ):
     epochs = 500
     learning_rates = [(0.001, 0.001), (0.025, 0.025), (0.01, 0.01)]
     n_depth = 30
+    option = 'bootstrapping'
     colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
 
     run = 0
@@ -74,7 +75,8 @@ def experiment( ):
                 'epochs': epochs,
                 'alpha_1': alpha[0],
                 'alpha_2': alpha[1],
-                'n_depth': n_depth
+                'n_depth': n_depth,
+                'option': option
             }
 
             print(f'Running {method}-method with learning rate_actor ={alpha[0]} and  learning rate_critic ={alpha[1]}')
