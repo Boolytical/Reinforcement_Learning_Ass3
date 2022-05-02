@@ -33,15 +33,14 @@ def average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, s
     return learning_curve, standard_error
 
 
-def experiment(methods: str):
+def experiment(method: str):
     n_repetitions = 5
     n_traces = 500
     n_timesteps = 500
     smoothing_window = 101
 
-    if methods == 'REINFORCE and actor-critic':
+    if method == 'REINFORCE':
         ### Method: REINFORCE
-        method = 'REINFORCE'
         gamma = 0.99
         learning_rates = [0.001, 0.025, 0.01]
         colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
@@ -65,8 +64,8 @@ def experiment(methods: str):
                 run += 1
         Plot.save('REINFORCE.png')
 
+    elif method == 'Actor-critic':
         ### Method: Actor-critic with bootstrapping
-        method = 'Actor-critic'
         n_traces = 5    # TODO: we use for this method epochs with each epoch having a 'small' number of traces
         epochs = 500
         learning_rates = [(0.001, 0.001), (0.025, 0.025), (0.01, 0.01)]
@@ -96,14 +95,11 @@ def experiment(methods: str):
                 run += 1
         Plot.save('Actor_critic_bootstrapping.png')
         
-    else:   # adjust this when below methods implemented
-        
+    elif method == 'baseline_subtraction':
         ### Method: Actor-critic with baseline subtraction
-        method = 'baseline_subtraction'
         epochs = 500
         learning_rates = [(0.001, 0.001), (0.025, 0.025), (0.01, 0.01)]
         n_depth = 30
-        option = 'bootstrapping'
         colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
 
         run = 0
@@ -114,7 +110,7 @@ def experiment(methods: str):
                 'alpha_1': alpha[0],
                 'alpha_2': alpha[1],
                 'n_depth': n_depth,
-                'option': option
+                'option': method
             }
 
             print(f'Running {method}-method with learning rate_actor ={alpha[0]} and  learning rate_critic ={alpha[1]}')
@@ -129,12 +125,11 @@ def experiment(methods: str):
             run += 1
         Plot.save('Actor_critic_baseline_subtraction.png')
 
+    elif method == 'bootstrapping_baseline':
         ### Method: Actor-critic with bootstrapping and baseline subtraction
-        method = 'bootstrapping_baseline'
         epochs = 500
         learning_rates = [(0.001, 0.001), (0.025, 0.025), (0.01, 0.01)]
         n_depth = 30
-        option = 'bootstrapping'
         colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
 
         run = 0
@@ -145,7 +140,7 @@ def experiment(methods: str):
                     'alpha_1': alpha[0],
                     'alpha_2': alpha[1],
                     'n_depth': n_depth,
-                    'option': option
+                    'option': method
                 }
 
                 print(f'Running {method}-method with learning rate_actor ={alpha[0]} and  learning rate_critic ={alpha[1]}')
@@ -160,4 +155,4 @@ def experiment(methods: str):
         Plot.save('Actor_critic_both.png')
 
 if __name__ == '__main__':
-    experiment(methods='REINFORCE and actor-critic')    # added this argument to run only implemented methods, can be removed later on
+    experiment(method='REINFORCE')    # added this argument to run only implemented methods, can be removed later on
