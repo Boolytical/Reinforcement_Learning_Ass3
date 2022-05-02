@@ -11,11 +11,11 @@ class REINFORCE_Agent:
         self.n_actions = env.action_space.n
         self.learning_rate = param_dict['alpha']
         self.gamma = param_dict['gamma']
-        
-        self.memory = []    # used for memorizing traces
-        
+
+        self.memory = []  # used for memorizing traces
+
         self.model = self._initialize_nn()
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr = self.learning_rate)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.learning_rate)
 
     def _initialize_nn(self):
         """ Initialize neural network. """
@@ -32,7 +32,7 @@ class REINFORCE_Agent:
     def memorize(self, s, a, r):
         """ Memorize state, action and reward. """
         self.memory.append((s, a, r))
-        
+
     def forget(self):
         """ Empty memory. """
         self.memory = []
@@ -43,54 +43,49 @@ class REINFORCE_Agent:
         action = np.random.choice(np.arange(0, self.n_actions), p=action_probability)
         return action
 
-    def loss(self):
-        """ Calculate the loss for the trace """
+    def loss (self):
+        """ Return the loss """
         # Estimate the return of the trace
-        R_t = torch.Tensor([r for (s, a, r) in self.memory]).flip(dims=(0, ))
+        R_t = torch.Tensor([r for (s, a, r) in self.memory]).flip(dims=(0,))
 
-        G_k = []                                            # Total return per timestep of the trace
+        R_list = []
+        # Total return per timestep of the trace
         for i in range(len(self.memory)):
-            new_G_k = 0
-            power = 0
-            for j in range(i, len(self.memory)):
-                new_G_k = new_G_k + ((self.gamma ** power) * R_t[j]).numpy()
-                power += 1
-            G_k.append(new_G_k)
+            R_elements = [pow(self.gamma, idx - i - 1) * R_t[idx - 1].numpy() for idx in range(i + 1, len(self.memory) + 1)]
+            R_list.append(sum(R_elements))
 
-        U_theta = torch.FloatTensor(G_k)                    # Expected return
-        U_theta = U_theta / U_theta.max()                   # Normalized expected return; more stable
+        U_theta = torch.FloatTensor(R_list) # Expected reward
+        U_theta = U_theta / U_theta.max() # Normalized expected reward
 
-        ### Determine? What are we doing here? ###
-        all_states = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
-        all_actions = torch.Tensor(np.array([a for (s, a, r) in self.memory]))
-        predictions = self.model(all_states)
-        probabilities = predictions.gather(dim=1, index=all_actions.long().view(-1, 1)).squeeze()
+        s_t = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
+        a_t = torch.Tensor(np.array([a for (s, a, r) in self.memory]))
 
-        # Determine loss based on probabilities of picked actions and the rewards
+        predictions = self.model(s_t)
+        probabilities = predictions.gather(dim=1, index=a_t.long().view(-1, 1)).squeeze()
+
+        # Update the weights of the policy
         loss = - torch.sum(torch.log(probabilities) * U_theta)
         return loss
-
 
 def act_in_env(n_traces: int, n_timesteps: int, param_dict: dict, bootstrapping = False, baseline = False):
     env = gym.make('CartPole-v1')               # create environment of CartPole-v1
     agent = REINFORCE_Agent(env, param_dict)    # initiate the agent
 
-    env_scores = []                     # shows trace length over training time
+    env_scores = []  # shows trace length over training time
     for m in range(n_traces):
-        state = env.reset()             # reset environment and get initial state
+        state = env.reset()  # reset environment and get initial state
 
         # Use the policy to collect a trace
         for t in range(n_timesteps):
-            action = agent.choose_action(state)
-            state_next, _ , done, _ = env.step(action)
-            agent.memorize(state, action, t+1)
+            action = agent.choose_action(s=state)
+            state_next, _, done, _ = env.step(action)
+            agent.memorize(s=state, a=action, r=t + 1)
             state = state_next
 
             if done:
-                env_scores.append(t+1)
+                env_scores.append(t + 1)
                 break
 
-        # Calculate loss and update the weights of the policy
         loss = agent.loss()
         agent.optimizer.zero_grad()
         loss.backward()
@@ -104,12 +99,3 @@ def act_in_env(n_traces: int, n_timesteps: int, param_dict: dict, bootstrapping 
         agent.forget()
     env.close()
     return env_scores
-
-
-param_dict = {
-    'alpha': 0.001,             # Learning-rate
-    'gamma': 0.99               # Discount factor
-}
-
-
-act_in_env(n_traces=1000, n_timesteps=500, param_dict=param_dict)
