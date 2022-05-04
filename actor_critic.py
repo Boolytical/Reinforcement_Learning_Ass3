@@ -85,6 +85,8 @@ class Actor_Critic_Agent:
                 for k in range(self.n_depth - 1):
                     Q_value += r_t[t + k] + value
                 self.psi_values.append(Q_value)
+            else:
+                self.psi_values.append(0)
 
         elif self.option == 'baseline_subtraction':
             expected_return_per_action_t = self.model_critic(s_t[t])  # Estimated value at timestep t
@@ -108,6 +110,8 @@ class Actor_Critic_Agent:
                 for k in range(self.n_depth - 1):
                     A_val += r_t[t + k] + value - value_substract
                 self.psi_values.append(A_val)
+            else:
+                self.psi_values.append(0)
 
         else:
             raise ValueError('{} does not exist as method'.format(self.option))
@@ -123,9 +127,16 @@ class Actor_Critic_Agent:
 
         ##### Update the weights of the policy
         psi = torch.Tensor(self.psi_values)
+        psi /= psi.max()
         psi.requires_grad_()
+
         loss_actor = - torch.sum(psi * torch.sum(torch.log(probabilities)))
-        loss_critic = torch.sum(pow(psi, 2))
+        if self.option == 'bootstrapping':
+            all_return_values = self.model_critic(s_t)
+            value_t = torch.mean(all_return_values, 1)
+            loss_critic = torch.sum(pow(psi - value_t, 2))
+        else:
+            loss_critic = torch.sum(pow(psi, 2))
 
         self.forget_psi_values()
         return loss_actor, loss_critic
@@ -176,13 +187,3 @@ def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
 
     env.close()
     return avg_per_epoch
-
-
-##### Quick way to test #####
-param_dict = {
-    'alpha_1': 0.001,
-    'alpha_2': 0.001,
-    'n_depth': 4,
-    'option': 'bootstrapping'}
-
-act_in_env(epochs=1, n_traces=5, n_timesteps=500, param_dict=param_dict)
