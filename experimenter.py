@@ -36,7 +36,7 @@ def average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, s
 def experiment(method: str):
     n_repetitions = 1
     n_traces = 10
-    n_timesteps = 10
+    n_timesteps = 500
     smoothing_window = 101
 
     if method == 'REINFORCE':
