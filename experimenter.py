@@ -67,7 +67,7 @@ def experiment(method: str):
     elif method == 'Actor-critic':
         ### Method: Actor-critic with bootstrapping
         n_traces = 5    # TODO: we use for this method epochs with each epoch having a 'small' number of traces
-        epochs = 500
+        epochs = 1
         learning_rates = [(0.001, 0.001), (0.025, 0.025), (0.01, 0.01)]
         n_depth = 10
         option = 'bootstrapping'
@@ -97,7 +97,7 @@ def experiment(method: str):
         
     elif method == 'baseline_subtraction':
         ### Method: Actor-critic with baseline subtraction
-        epochs = 500
+        epochs = 1
         learning_rates = [(0.001, 0.001), (0.025, 0.025), (0.01, 0.01)]
         n_depth = 30
         colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
@@ -127,7 +127,7 @@ def experiment(method: str):
 
     elif method == 'bootstrapping_baseline':
         ### Method: Actor-critic with bootstrapping and baseline subtraction
-        epochs = 500
+        epochs = 1
         learning_rates = [(0.001, 0.001), (0.025, 0.025), (0.01, 0.01)]
         n_depth = 30
         colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
@@ -155,4 +155,4 @@ def experiment(method: str):
         Plot.save('Actor_critic_both.png')
 
 if __name__ == '__main__':
-    experiment(method='REINFORCE')    # added this argument to run only implemented methods, can be removed later on
+    experiment(method='REINFORCE')
