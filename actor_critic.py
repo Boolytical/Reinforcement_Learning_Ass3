@@ -17,6 +17,8 @@ class Actor_Critic_Agent:
 
         self.memory = []    # used for memorizing traces
         self.Q_values = []  # used for memorizing the Q-values
+        self.A_mc_values = []
+        self.A_n_values= []
         
         self.model_actor = self._initialize_nn(type='actor')
         self.model_critic = self._initialize_nn(type='critic')
@@ -55,66 +57,138 @@ class Actor_Critic_Agent:
         """ Empty memory of Q_values """
         self.Q_values = []
 
+    def forget_advantage_values(self):
+        """ Empty memory of Q_values """
+        self.A_n_values = []
+        self.A_mc_values = []
+
     def choose_action(self, s):
         """ Return action and probability distribution given state. """
         action_probability = self.model_actor(torch.from_numpy(s).float()).detach().numpy()
+        if np.isnan(action_probability).any():
+            print(np.isnan(action_probability).any())
+            print(torch.min(self.model_actor(torch.from_numpy(s).float())))
+            print(torch.max(self.model_actor(torch.from_numpy(s).float())))
+            print(f'States: {s} --- Action Probability: {action_probability}')
         action = np.random.choice(np.arange(0, self.n_actions), p=action_probability)
         return action
 
-    def Q_values_calc (self, t):
+    def Q_values_calc(self, t):
         """ Save the Q-values for every timestep until n_depth in memory"""
         r_t = torch.Tensor([r for (s, a, r) in self.memory]).flip(dims=(0,))
         s_t = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
 
-        # TODO: Avoid that index exceeds length of memorized states
-        if t + self.n_depth < len(self.memory):
-            s_t_depth = torch.Tensor(s_t[t + self.n_depth])
-            expected_return_per_action = self.model_critic(s_t_depth)    # outputs return values for action 0 and 1
-            value = expected_return_per_action.max()    # to get value of s_t+n, get highest return of output nodes
+        # print('Calculate Q values of timestep {} of total of {} timesteps with depth of {}'.format(t, len(self.memory), self.n_depth))
 
-            Q_value = 0 # Q_n(s_t, a_t)
-            # Total return per timestep of the trace
-            for k in range(self.n_depth - 1):   # sum until k = n - 1 (see Alg. 4.3, p 100)
-                Q_value += r_t[t + k] + value
-            
-            # print('Append new Q_value of timestep {}: {}'.format(t, Q_value))
-            self.Q_values.append(Q_value)
-            
-        else:
-            self.Q_values.append(0) # what to do with these cases?
+        ##### Avoid that index exceeds length of memorized states
+        if self.option == 'bootstrapping':
 
-    def loss (self):
+            if t + self.n_depth < len(self.memory):
+
+                s_t_depth = torch.Tensor(s_t[t + self.n_depth])
+                expected_return_per_action = self.model_critic(s_t_depth)  # outputs return values for action 0 and 1
+                Value = expected_return_per_action.max()  # to get Value of s_t+n, get highest return of output nodes TODO: Shoudn't that be mean()
+
+                Q_value = 0  # Q_n(s_t, a_t)
+                # Total return per timestep of the trace
+                for k in range(self.n_depth - 1):  # sum until k = n - 1 (see Alg. 4.3, p 100)
+                    Q_value += r_t[t + k] + Value
+
+                # print('Append new Q_value of timestep {}: {}'.format(t, Q_value))
+                self.Q_values.append(Q_value)
+
+            else:
+                self.Q_values.append(0)  # TODO: what to do with these cases?
+
+        elif self.option == 'baseline_subtraction':
+
+            expected_return_per_action_t = self.model_critic(s_t[t])  # Estimated Value at timestep t
+            Value_substract = expected_return_per_action_t.max()
+
+            A_val = 0
+            for k in range(t, len(self.memory)):  # Compute Q-Value
+                A_val += r_t[k] - Value_substract
+
+            self.A_mc_values.append(A_val)
+
+
+        elif self.option == 'bootstrapping_baseline':
+
+            if t + self.n_depth < len(self.memory):
+                s_t_depth = torch.Tensor(s_t[t + self.n_depth])
+                expected_return_per_action = self.model_critic(s_t_depth)  # outputs return values for action 0 and 1
+                Value = expected_return_per_action.max()
+
+                expected_return_per_action_t = self.model_critic(s_t[t])  # Estimated Value at timestep t
+                Value_substract = expected_return_per_action_t.max()
+
+                A_val = 0
+                for k in range(self.n_depth - 1):
+                    A_val += r_t[t + k] + Value - Value_substract
+
+                self.A_n_values.append(A_val)
+
+            else:
+                self.A_n_values.append(0)
+
+    def loss(self):
         """ Return the loss for actor and critic. """
         a_t = torch.Tensor(np.array([a for (s, a, r) in self.memory]))
         s_t = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
 
         predictions = self.model_actor(s_t)
-        probabilities = predictions.gather(dim=1, index=a_t.long().view(-1, 1)).squeeze()   # get policy pi_actor(a_t|s_t) for each timestep
+        probabilities = predictions.gather(dim=1, index=a_t.long().view(-1,
+                                                                        1)).squeeze()  # get policy pi_actor(a_t|s_t) for each timestep
 
         ##### Update the weights of the policy
+
+        ## Advantage: A_n = Q_n(s_t, a_t) - V_critic(s_t) with V(s_t) = max_a (Q(s_t, a_t))
         all_return_values = self.model_critic(s_t)
-        value_t = torch.max(all_return_values, 1).values
-        Q_t = torch.Tensor(self.Q_values)   # convert to tensor
-        
-        # TODO: Sometimes length of Q values list is smaller than of values list as the depth conflicts if t+depth > len(memory)
-        A_n = Q_t - value_t
+        # print('All return values predicted by critic {}'.format(all_return_values))
+
+        Value_t = torch.mean(all_return_values, 1)
+        Q_t = torch.Tensor(self.Q_values)  # convert to tensor
+
+        # print('Q_values for all timesteps {}'.format(Q_t))
+        # print('Values for all timesteps {}'.format(Value_t))
+
+        ##### Sometimes length of Q values list is smaller than of Values list as the depth conflicts if t+depth > len(memory)
+        # A_n = Q_t - Value_t
 
         if self.option == 'bootstrapping':
+            # print('Q_values is {}'.format(self.Q_values))
+            # print('Policy is {}'.format(torch.log(probabilities)))
+
+            ##### Removed learning rates as they are already included in Adam optimizers. Do we need to add it again at calculation of loss below? Otherwise then can be included again here
             loss_actor = - torch.sum(Q_t * torch.sum(torch.log(probabilities)))
-            loss_critic = torch.sum(pow(A_n, 2))
-            
+            loss_critic = torch.sum(pow(Q_t - Value_t, 2))
+
+            self.forget_Q_values()
+
         elif self.option == 'baseline_subtraction':
-            raise ValueError('{} not yet fully implemented'.format(self.option))
-            # loss_actor = - torch.sum(A_n * torch.sum(torch.log(probabilities)))
+
+            A_mc = torch.Tensor(self.A_mc_values)
+
+            loss_actor = - torch.sum(A_mc * torch.sum(torch.log(probabilities)))
+            loss_critic = torch.sum(pow(A_mc - Value_t, 2))
+
+            self.forget_advantage_values()
+
 
         elif self.option == 'bootstrapping_baseline':
-            # TODO: implement this loss
-            raise ValueError('{} not yet implemented'.format(self.option))
+
+            A_n = torch.Tensor(self.A_n_values)
+
+            loss_actor = - torch.sum(A_n * torch.sum(torch.log(probabilities)))
+            loss_critic = torch.sum(pow(A_n - Value_t, 2))
+
+            self.forget_advantage_values()
 
         else:
             raise ValueError('{} does not exist as method'.format(self.option))
 
-        self.forget_Q_values()
+        # loss_critic = torch.sum(A_n)**2
+
         return loss_actor, loss_critic
 
 
