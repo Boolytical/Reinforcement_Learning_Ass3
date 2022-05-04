@@ -84,9 +84,6 @@ class Actor_Critic_Agent:
                     Q_value += r_t[t + k] + value
                 self.psi_values.append(Q_value)
 
-            else:
-                self.Q_values.append(0)  # TODO: what to do with these cases?
-
         elif self.option == 'baseline_subtraction':
             expected_return_per_action_t = self.model_critic(s_t[t])  # Estimated value at timestep t
             value_substract = expected_return_per_action_t.max()
@@ -111,8 +108,8 @@ class Actor_Critic_Agent:
                     A_val += r_t[t + k] + value - value_substract
                 self.psi_values.append(A_val)
 
-            else:
-                self.psi_values.append(0)
+        else:
+            raise ValueError('{} does not exist as method'.format(self.option))
 
     def loss(self):
         """ Return the loss for actor and critic. """
