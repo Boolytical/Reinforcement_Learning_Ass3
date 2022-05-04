@@ -91,7 +91,6 @@ class Actor_Critic_Agent:
             A_val = 0
             for k in range(t, len(self.memory)):  # Compute Q-value
                 A_val += r_t[k] - value_substract
-
             self.psi_values.append(A_val)
 
         elif self.option == 'bootstrapping_baseline':
@@ -121,12 +120,9 @@ class Actor_Critic_Agent:
                                            .view(-1, 1)).squeeze()  # get policy pi_actor(a_t|s_t) for each timestep
 
         ##### Update the weights of the policy
-        all_return_values = self.model_critic(s_t)
-        value_t = torch.mean(all_return_values, 1)
         psi = torch.Tensor(self.psi_values)
-
         loss_actor = - torch.sum(psi * torch.sum(torch.log(probabilities)))
-        loss_critic = torch.sum(pow(psi - value_t, 2))
+        loss_critic = torch.sum(pow(psi, 2))
 
         self.forget_psi_values()
         return loss_actor, loss_critic
@@ -180,7 +176,6 @@ def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
     
     
 ##### Quick way to test #####
-"""
 param_dict = {
     'alpha_1': 0.001,
     'alpha_2': 0.001,
@@ -188,4 +183,4 @@ param_dict = {
     'option': 'bootstrapping'}
 
 act_in_env(epochs=1, n_traces=5, n_timesteps=500, param_dict=param_dict)
-"""
+
