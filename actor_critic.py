@@ -16,9 +16,7 @@ class Actor_Critic_Agent:
         self.option = param_dict['option']
 
         self.memory = []    # used for memorizing traces
-        self.Q_values = []  # used for memorizing the Q-values
-        self.A_mc_values = []
-        self.A_n_values= []
+        self.psi_values = []  # used for memorizing the psi-values
         
         self.model_actor = self._initialize_nn(type='actor')
         self.model_critic = self._initialize_nn(type='critic')
@@ -53,11 +51,9 @@ class Actor_Critic_Agent:
         """ Empty memory. """
         self.memory = []
 
-    def forget_advantage_values(self):
+    def forget_psi_values(self):
         """ Empty memory of Q_values """
-        self.Q_values = []
-        self.A_n_values = []
-        self.A_mc_values = []
+        self.psi_values = []
 
     def choose_action(self, s):
         """ Return action and probability distribution given state. """
@@ -86,7 +82,7 @@ class Actor_Critic_Agent:
                 # Total return per timestep of the trace
                 for k in range(self.n_depth - 1):
                     Q_value += r_t[t + k] + value
-                self.Q_values.append(Q_value)
+                self.psi_values.append(Q_value)
 
             else:
                 self.Q_values.append(0)  # TODO: what to do with these cases?
@@ -99,7 +95,7 @@ class Actor_Critic_Agent:
             for k in range(t, len(self.memory)):  # Compute Q-value
                 A_val += r_t[k] - value_substract
 
-            self.A_mc_values.append(A_val)
+            self.psi_values.append(A_val)
 
         elif self.option == 'bootstrapping_baseline':
             if t + self.n_depth < len(self.memory):
@@ -113,10 +109,10 @@ class Actor_Critic_Agent:
                 A_val = 0
                 for k in range(self.n_depth - 1):
                     A_val += r_t[t + k] + value - value_substract
-                self.A_n_values.append(A_val)
+                self.psi_values.append(A_val)
 
             else:
-                self.A_n_values.append(0)
+                self.psi_values.append(0)
 
     def loss(self):
         """ Return the loss for actor and critic. """
@@ -130,20 +126,12 @@ class Actor_Critic_Agent:
         ##### Update the weights of the policy
         all_return_values = self.model_critic(s_t)
         value_t = torch.mean(all_return_values, 1)
-
-        if self.option == 'bootstrapping':
-            psi = torch.Tensor(self.Q_values)
-        elif self.option == 'baseline_subtraction':
-            psi = torch.Tensor(self.A_mc_values)
-        elif self.option == 'bootstrapping_baseline':
-            psi = torch.Tensor(self.A_n_values)
-        else:
-            raise ValueError('{} does not exist as method'.format(self.option))
+        psi = torch.Tensor(self.psi_values)
 
         loss_actor = - torch.sum(psi * torch.sum(torch.log(probabilities)))
         loss_critic = torch.sum(pow(psi - value_t, 2))
 
-        self.forget_advantage_values()
+        self.forget_psi_values()
         return loss_actor, loss_critic
 
 
