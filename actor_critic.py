@@ -132,31 +132,18 @@ class Actor_Critic_Agent:
         value_t = torch.mean(all_return_values, 1)
 
         if self.option == 'bootstrapping':
-            Q_t = torch.Tensor(self.Q_values)
-
-            loss_actor = - torch.sum(Q_t * torch.sum(torch.log(probabilities)))
-            loss_critic = torch.sum(pow(Q_t - value_t, 2))
-
-            self.forget_advantage_values()
-
+            psi = torch.Tensor(self.Q_values)
         elif self.option == 'baseline_subtraction':
-            A_mc = torch.Tensor(self.A_mc_values)
-
-            loss_actor = - torch.sum(A_mc * torch.sum(torch.log(probabilities)))
-            loss_critic = torch.sum(pow(A_mc - value_t, 2))
-
-            self.forget_advantage_values()
-
+            psi = torch.Tensor(self.A_mc_values)
         elif self.option == 'bootstrapping_baseline':
-            A_n = torch.Tensor(self.A_n_values)
-
-            loss_actor = - torch.sum(A_n * torch.sum(torch.log(probabilities)))
-            loss_critic = torch.sum(pow(A_n - value_t, 2))
-
-            self.forget_advantage_values()
-
+            psi = torch.Tensor(self.A_n_values)
         else:
             raise ValueError('{} does not exist as method'.format(self.option))
+
+        loss_actor = - torch.sum(psi * torch.sum(torch.log(probabilities)))
+        loss_critic = torch.sum(pow(psi - value_t, 2))
+
+        self.forget_advantage_values()
         return loss_actor, loss_critic
 
 
