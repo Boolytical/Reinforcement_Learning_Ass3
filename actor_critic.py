@@ -127,7 +127,7 @@ class Actor_Critic_Agent:
 
         ##### Update the weights of the policy
         psi = torch.Tensor(self.psi_values)
-        psi /= psi.max()
+        # psi /= psi.max() This results in NaN values
         psi.requires_grad_()
 
         loss_actor = - torch.sum(psi * torch.sum(torch.log(probabilities)))
@@ -139,6 +139,7 @@ class Actor_Critic_Agent:
             loss_critic = torch.sum(pow(psi, 2))
 
         self.forget_psi_values()
+        
         return loss_actor, loss_critic
 
 
