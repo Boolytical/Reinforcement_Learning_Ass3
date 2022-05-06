@@ -11,6 +11,7 @@ class REINFORCE_Agent:
         self.n_actions = env.action_space.n
         self.learning_rate = param_dict['alpha']
         self.gamma = param_dict['gamma']
+        self.NN = param_dict['NN']
 
         self.memory = []  # used for memorizing traces
 
@@ -21,12 +22,21 @@ class REINFORCE_Agent:
         """ Initialize neural network. """
         print('Create a neural network with {} input nodes and {} output nodes'.format(self.n_states, self.n_actions))
 
-        ## TO DO: Have a look at optimizing these model specifications ##
-        model = torch.nn.Sequential(
-            torch.nn.Linear(self.n_states, 256),
-            torch.nn.ReLU(),
-            torch.nn.Linear(256, self.n_actions),
-            torch.nn.Softmax(dim=0))
+        # TODO: Have a look at optimizing these model specifications ##
+        if isinstance(self.NN, int):
+            model = torch.nn.Sequential(
+                torch.nn.Linear(self.n_states, self.NN),
+                torch.nn.ReLU(),
+                torch.nn.Linear(self.NN, self.n_actions),
+                torch.nn.Softmax(dim=0))
+
+        elif isinstance(self.NN, list):
+            model = torch.nn.Sequential(
+                torch.nn.Linear(self.n_states, self.NN[0]),
+                torch.nn.ReLU(),
+                torch.nn.Linear(self.NN[0], self.NN[1]),
+                torch.nn.Linear(self.NN[1], self.n_actions),
+                torch.nn.Softmax(dim=0))
         return model
 
     def memorize(self, s, a, r):

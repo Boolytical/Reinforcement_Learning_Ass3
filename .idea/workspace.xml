@@ -1,7 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="db087367-a5c9-4517-a581-61c76eae6417" name="Default Changelist" comment="" />
+    <list default="true" id="db087367-a5c9-4517-a581-61c76eae6417" name="Default Changelist" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Actor_critic_baseline_subtraction.png" beforeDir="false" afterPath="$PROJECT_DIR$/Actor_critic_baseline_subtraction.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Actor_critic_bootstrapping.png" beforeDir="false" afterPath="$PROJECT_DIR$/Actor_critic_bootstrapping.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Actor_critic_both.png" beforeDir="false" afterPath="$PROJECT_DIR$/Actor_critic_both.png" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/actor_critic.py" beforeDir="false" afterPath="$PROJECT_DIR$/actor_critic.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/experimenter.py" beforeDir="false" afterPath="$PROJECT_DIR$/experimenter.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/reinforce.py" beforeDir="false" afterPath="$PROJECT_DIR$/reinforce.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -21,15 +29,16 @@
     <option name="stateVersion" value="1" />
   </component>
   <component name="ProjectId" id="28SyNQAbPV1b1IdErwBKz0NVnxh" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "settings.editor.selected.configurable": "advanced.settings"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;settings.editor.selected.configurable&quot;: &quot;advanced.settings&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager" selected="Python.experimenter">
     <configuration name="actor_critic" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <option name="INTERPRETER_OPTIONS" value="" />

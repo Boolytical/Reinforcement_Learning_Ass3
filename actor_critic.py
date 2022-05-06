@@ -30,7 +30,7 @@ class Actor_Critic_Agent:
         """ Initialize neural network. """
         print('Create a neural network with {} input nodes and {} output nodes'.format(self.n_states, self.n_actions))
 
-        ## TO DO: Have a look at optimizing these model specifications ##
+        # TODO: Have a look at optimizing these model specifications
         if type == 'actor':
             model = torch.nn.Sequential(
                 torch.nn.Linear(self.n_states, 256),
@@ -137,7 +137,6 @@ class Actor_Critic_Agent:
             loss_critic = torch.sum(pow(psi, 2))
 
         self.forget_psi_values()
-        
         return loss_actor, loss_critic
 
 
