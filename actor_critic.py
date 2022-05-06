@@ -12,8 +12,7 @@ class Actor_Critic_Agent:
         self.n_states = env.observation_space.shape[0]
         self.n_actions = env.action_space.n
 
-        self.learning_rate_actor = param_dict['alpha_1']
-        self.learning_rate_critic = param_dict['alpha_2']
+        self.learning_rate = param_dict['alpha']
         self.n_depth = param_dict['n_depth']
         self.option = param_dict['option']
 
@@ -23,8 +22,8 @@ class Actor_Critic_Agent:
         self.model_actor = self._initialize_nn(type='actor')
         self.model_critic = self._initialize_nn(type='critic')
 
-        self.optimizer_actor = torch.optim.Adam(self.model_actor.parameters(), lr=self.learning_rate_actor)
-        self.optimizer_critic = torch.optim.Adam(self.model_critic.parameters(), lr=self.learning_rate_critic)
+        self.optimizer_actor = torch.optim.Adam(self.model_actor.parameters(), lr=self.learning_rate)
+        self.optimizer_critic = torch.optim.Adam(self.model_critic.parameters(), lr=self.learning_rate)
 
     def _initialize_nn(self, type: str = 'actor'):
         """ Initialize neural network. """
