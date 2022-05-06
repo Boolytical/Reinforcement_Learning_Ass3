@@ -22,7 +22,6 @@ class REINFORCE_Agent:
         """ Initialize neural network. """
         print('Create a neural network with {} input nodes and {} output nodes'.format(self.n_states, self.n_actions))
 
-        # TODO: Have a look at optimizing these model specifications ##
         if isinstance(self.NN, int):
             model = torch.nn.Sequential(
                 torch.nn.Linear(self.n_states, self.NN),
