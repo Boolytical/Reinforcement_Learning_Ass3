@@ -65,7 +65,7 @@ def experiment(method: str, option: str):
                                y=learning_curve,
                                std=standard_error,
                                col=colours[run],
-                               label=(f'REINFORCE with Neural Network Architecture = {NN}'))
+                               label=(f'Neural Network Architecture = {NN}'))
                 run += 1
             Plot.save('REINFORCE_NN.png')
 
@@ -91,7 +91,7 @@ def experiment(method: str, option: str):
                                 y=learning_curve,
                                 std=standard_error,
                                 col=colours[run],
-                                label=r'REINFORCE with $\alpha$={} and $\gamma$={}'.format(alpha, gamma))
+                                label=r'$\alpha$={} and $\gamma$={}'.format(alpha, gamma))
                     run += 1
             Plot.save('REINFORCE_alpha.png')
 
@@ -124,7 +124,7 @@ def experiment(method: str, option: str):
                                 y=learning_curve,
                                 std=standard_error,
                                 col=colours[run],
-                                label=r'Actor-critic with $\alpha$ = {} and depth = {}'.format(alpha, depth))
+                                label=r'$\alpha$ = {} and depth = {}'.format(alpha, depth))
                     run += 1
             Plot.save('Actor_critic_bootstrapping.png')
 
@@ -150,7 +150,7 @@ def experiment(method: str, option: str):
                                 y=learning_curve,
                                 std=standard_error,
                                 col=colours[run],
-                                label=r'Actor-critic with $\alpha={} and depth = {}'.format(alpha, depth))
+                                label=r'$\alpha={} and depth = {}'.format(alpha, depth))
                     run += 1
                 Plot.save('Actor_critic_baseline_subtraction.png')
 
@@ -175,10 +175,10 @@ def experiment(method: str, option: str):
                                 y=learning_curve,
                                 std=standard_error,
                                 col=colours[run],
-                                label=r'Actor-critic with $\alpha={} and depth = {}'.format(alpha, depth))
+                                label=r'$\alpha={} and depth = {}'.format(alpha, depth))
                     run += 1
             Plot.save('Actor_critic_both.png')
 
 if __name__ == '__main__':
-    experiment(method='REINFORCE', option = 'bootstrapping')
+    experiment(method='actor-critic', option = 'NN')
     # option = 'NN', 'alpha', 'bootstrapping', 'baseline_subtraction', 'boostrapping_baseline'
