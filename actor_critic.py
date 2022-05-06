@@ -122,12 +122,10 @@ class Actor_Critic_Agent:
         s_t = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
 
         predictions = self.model_actor(s_t)
-        probabilities = predictions.gather(dim=1, index=a_t.long()
-                                           .view(-1, 1)).squeeze()  # get policy pi_actor(a_t|s_t) for each timestep
+        probabilities = predictions.gather(dim=1, index=a_t.long().view(-1, 1)).squeeze()  # get policy pi_actor(a_t|s_t) for each timestep
 
         ##### Update the weights of the policy
         psi = torch.Tensor(self.psi_values)
-        psi /= psi.max() # Normalize psi
         psi.requires_grad_()
 
         loss_actor = - torch.sum(psi * torch.sum(torch.log(probabilities)))
@@ -139,6 +137,7 @@ class Actor_Critic_Agent:
             loss_critic = torch.sum(pow(psi, 2))
 
         self.forget_psi_values()
+        
         return loss_actor, loss_critic
 
 
