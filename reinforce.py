@@ -29,7 +29,7 @@ class REINFORCE_Agent:
                 torch.nn.Linear(self.NN, self.n_actions),
                 torch.nn.Softmax(dim=0))
 
-        elif isinstance(self.NN, list):
+        elif isinstance(self.NN, list) and len(self.NN) == 2:
             model = torch.nn.Sequential(
                 torch.nn.Linear(self.n_states, self.NN[0]),
                 torch.nn.ReLU(),

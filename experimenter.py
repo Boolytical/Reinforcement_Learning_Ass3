@@ -33,6 +33,7 @@ def average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, s
     return learning_curve, standard_error
 
 
+
 def experiment(method: str, option: str):
     n_repetitions = 20 # 20
     n_traces = 2000 # 2000
@@ -99,6 +100,7 @@ def experiment(method: str, option: str):
         epochs = 500
         learning_rate = [0.001, 0.025, 0.01]
         n_depth = [10, 30, 50]
+        NN = [128, 64]
         colours = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22"]
 
         if option == 'bootstrapping':
@@ -112,6 +114,7 @@ def experiment(method: str, option: str):
                         'alpha': alpha,
                         'n_depth': depth,
                         'option': option,
+                        'NN': NN
                     }
 
                     print(f'Running {method}-method with {option}: learning rate {alpha}')
@@ -136,6 +139,7 @@ def experiment(method: str, option: str):
                         'alpha': alpha,
                         'n_depth': depth,
                         'option': option,
+                        'NN': NN
                     }
 
                     print(f'Running {method}-method with {option}: learning rate = {alpha}')
@@ -161,6 +165,7 @@ def experiment(method: str, option: str):
                         'alpha': alpha,
                         'n_depth': depth,
                         'option': option,
+                        'NN': NN
                     }
 
                     print(f'{method}-method with {option}: learning rate = {alpha}')

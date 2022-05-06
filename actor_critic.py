@@ -15,6 +15,7 @@ class Actor_Critic_Agent:
         self.learning_rate = param_dict['alpha']
         self.n_depth = param_dict['n_depth']
         self.option = param_dict['option']
+        self.NN = param_dict['NN']
 
         self.memory = []  # used for memorizing traces
         self.psi_values = []  # used for memorizing the psi-values
@@ -29,18 +30,21 @@ class Actor_Critic_Agent:
         """ Initialize neural network. """
         print('Create a neural network with {} input nodes and {} output nodes'.format(self.n_states, self.n_actions))
 
-        if type == 'actor':
-            model = torch.nn.Sequential(
-                torch.nn.Linear(self.n_states, 256),
-                torch.nn.ReLU(),
-                torch.nn.Linear(256, self.n_actions),
-                torch.nn.Softmax(dim=0))
+        if isinstance(self.NN, list) and len(self.NN) == 2:
+            if type == 'actor':
+                model = torch.nn.Sequential(
+                    torch.nn.Linear(self.n_states, self.NN[0]),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(self.NN[0], self.NN[1]),
+                    torch.nn.Linear(self.NN[1], self.n_actions),
+                    torch.nn.Softmax(dim=0))
 
-        elif type == 'critic':
-            model = torch.nn.Sequential(
-                torch.nn.Linear(self.n_states, 256),
-                torch.nn.ReLU(),
-                torch.nn.Linear(256, self.n_actions))
+            elif type == 'critic':
+                model = torch.nn.Sequential(
+                    torch.nn.Linear(self.n_states, self.NN[0]),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(self.NN[0], self.NN[1]),
+                    torch.nn.Linear(self.NN[1], self.n_actions))
         return model  # return initialized model
 
     def memorize(self, s, a, r):
