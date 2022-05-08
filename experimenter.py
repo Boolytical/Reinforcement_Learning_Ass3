@@ -160,12 +160,12 @@ def experiment(method: str, option: str):
                                    y=learning_curve,
                                    std=standard_error,
                                    col=colours[run],
-                                   label=r'Actor-critic with $\alpha={} and depth = {}'.format(alpha, depth))
+                                   label=r'Actor-critic with $\alpha$={} and depth = {}'.format(alpha, depth))
 
                     Plot2.add_curve(x=np.arange(1, len(learning_curve) + 1),
                                     y=learning_curve,
                                     col=colours[run],
-                                    label=r'Actor-critic with $\alpha={} and depth = {}'.format(alpha, depth))
+                                    label=r'Actor-critic with $\alpha$={} and depth = {}'.format(alpha, depth))
                     run += 1
                 Plot.save('Actor_critic_baseline_subtraction_std.png')
                 Plot2.save('Actor_critic_baseline_subtraction.png')
@@ -192,18 +192,18 @@ def experiment(method: str, option: str):
                                    y=learning_curve,
                                    std=standard_error,
                                    col=colours[run],
-                                   label=r'Actor-critic with $\alpha={} and depth = {}'.format(alpha, depth))
+                                   label=r'Actor-critic with $\alpha$={} and depth = {}'.format(alpha, depth))
 
                     Plot2.add_curve(x=np.arange(1, len(learning_curve) + 1),
                                     y=learning_curve,
                                     col=colours[run],
-                                    label=r'Actor-critic with $\alpha={} and depth = {}'.format(alpha, depth))
+                                    label=r'Actor-critic with $\alpha$={} and depth = {}'.format(alpha, depth))
                     run += 1
             Plot.save('Actor_critic_both_std.png')
             Plot2.save('Actor_critic_both.png')
 
 
 if __name__ == '__main__':
-    experiment(method='Actor-critic', option='bootstrapping')
+    experiment(method='Actor-critic', option='baseline_subtraction')
     # method: 'REINFORCE' --> option: 'NN', 'alpha'
     # method: 'Actor-critic' --> option: 'bootstrapping', 'baseline_subtraction', 'bootstrapping_baseline'
