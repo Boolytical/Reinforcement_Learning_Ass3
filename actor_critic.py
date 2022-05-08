@@ -45,6 +45,22 @@ class Actor_Critic_Agent:
                     torch.nn.ReLU(),
                     torch.nn.Linear(self.NN[0], self.NN[1]),
                     torch.nn.Linear(self.NN[1], self.n_actions))
+
+        else:
+            if type == 'actor':
+                model = torch.nn.Sequential(
+                    torch.nn.Linear(self.n_states, self.NN),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(self.NN, self.n_actions),
+                    torch.nn.Softmax(dim=0))
+
+            elif type == 'critic':
+                model = torch.nn.Sequential(
+                    torch.nn.Linear(self.n_states, self.NN),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(self.NN, self.n_actions))
+
+
         return model  # return initialized model
 
     def memorize(self, s, a, r):
@@ -71,18 +87,19 @@ class Actor_Critic_Agent:
         r_t = torch.Tensor([r for (s, a, r) in self.memory]).flip(dims=(0,))
         s_t = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
 
-        # TODO: avoid that index exceeds length of memorized states
         if self.option == 'bootstrapping':
+
             s_t_depth = torch.Tensor(s_t[t + m])
             expected_return_per_action = self.model_critic(s_t_depth)  # outputs return values for action 0 and 1
             value = expected_return_per_action.mean()  # to get value of s_t+n, get highest return of output nodes
 
             q_val = 0  # Q_n(s_t, a_t)
             # Total return per timestep of the trace
-            for k in range(m - 1):
+            for k in range(m):
                 q_val += r_t[t + k]
 
             q_val += value
+
             self.psi_values.append(q_val)
 
 
@@ -106,7 +123,7 @@ class Actor_Critic_Agent:
             value_substract = expected_return_per_action_t.max()
 
             a_val = 0
-            for k in range(m - 1):
+            for k in range(m):
                 a_val += r_t[t + k]
 
             a_val = a_val + value - value_substract
@@ -182,3 +199,4 @@ def act_in_env(n_traces: int, n_timesteps: int, param_dict: dict):
 
     env.close()
     return env_scores
+
