@@ -8,7 +8,7 @@ The provided .py files (reinforce.py, actor_critic.py, experimenter.py, Helper.p
 ***
 * `Helper.py`         This file contains utility/plotter functions used in our implementation.
 * `reinforce.py`      This file contains the reinforce agent class with its relevant functions as well as the function that enables the agent acting in the provided environment.   
-* `actorc_critic.py`  This file contains the actor critic agent class with its relevant functions as well as the function that enables the agent acting in the provided environment. This agent can adapt three different options of the actor critic algorithm, being bootstrapping, baseline subtraction and bootstrapping+baseline subtraction.   
+* `actor_critic.py`  This file contains the actor critic agent class with its relevant functions as well as the function that enables the agent acting in the provided environment. This agent can adapt three different options of the actor critic algorithm, being bootstrapping, baseline subtraction and bootstrapping+baseline subtraction.   
 * `experimenter.py`   This file contains the functions that interpret the arguments included in the run commands and perform the accessory experiments that in the end save the relevant plots in the same working directory.
 ***
 
