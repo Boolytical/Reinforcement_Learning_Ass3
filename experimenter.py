@@ -47,10 +47,8 @@ def experiment(method: str, option: str):
                        "#bcbd22"]
 
             run = 0
-            Plot = LearningCurvePlot(
-                title=r'{} with $\alpha$={} and $\gamma$={} --- Averaged over {} repetitions'.format(method, alpha,
-                                                                                                     gamma,
-                                                                                                     n_repetitions))
+            Plot = LearningCurvePlot(title=r'{} with $\alpha$={} and $\gamma$={} --- Averaged over {} repetitions'.format(method, alpha, gamma, n_repetitions))
+            Plot2 = LearningCurvePlot(title=r'{} with $\alpha$={} and $\gamma$={} --- Averaged over {} repetitions'.format(method, alpha, gamma, n_repetitions))
             for NN in architecture:
                 param_dict = {
                     'alpha': alpha,  # Learning-rate
@@ -64,11 +62,19 @@ def experiment(method: str, option: str):
                                                                           param_dict, smoothing_window, method)
                 Plot.add_curve(x=np.arange(1, len(learning_curve) + 1),
                                y=learning_curve,
-                               # std=standard_error,
+                               std=standard_error,
                                col=colours[run],
                                label=(f'REINFORCE with Neural Network Architecture = {NN}'))
+
+                Plot2.add_curve(x=np.arange(1, len(learning_curve) + 1),
+                               y=learning_curve,
+                               col=colours[run],
+                               label=(f'REINFORCE with Neural Network Architecture = {NN}'))
+
                 run += 1
-            Plot.save('REINFORCE_NN.png')
+            Plot.save('REINFORCE_NN_std.png')
+            Plot2.save('REINFORCE_NN.png')
+
 
         elif option == 'alpha':
             gamma = 0.99
@@ -212,6 +218,6 @@ def experiment(method: str, option: str):
 
 
 if __name__ == '__main__':
-    experiment(method='REINFORCE', option='NN')
+    experiment(method='REINFORCE', option='alpha')
     # method: 'REINFORCE' --> option: 'NN', 'alpha'
     # method: 'Actor-critic' --> option: 'bootstrapping', 'baseline_subtraction', 'bootstrapping_baseline'
