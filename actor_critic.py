@@ -1,4 +1,3 @@
-# https://towardsdatascience.com/policy-gradient-methods-104c783251e0
 import gym
 import numpy as np
 import torch
