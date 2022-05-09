@@ -2,6 +2,7 @@ import reinforce
 import actor_critic
 import numpy as np
 import time
+import argparse
 from Helper import LearningCurvePlot, smooth
 
 
@@ -221,6 +222,14 @@ def experiment(method: str, option: str):
 
 
 if __name__ == '__main__':
-    experiment(method='REINFORCE', option='alpha')
+    parser = argparse.ArgumentParser(prog='REINFORCE and actor critic')
+    parser.add_argument('--method', type=str, required=True)
+    parser.add_argument('--option', type=str, required=True)
+    args = parser.parse_args()    
+    
+    method = args.method
+    option = args.option
+    
+    experiment(method=method, option=option)
     # method: 'REINFORCE' --> option: 'NN', 'alpha'
     # method: 'Actor-critic' --> option: 'bootstrapping', 'baseline_subtraction', 'bootstrapping_baseline'
