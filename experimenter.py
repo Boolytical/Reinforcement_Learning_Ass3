@@ -23,7 +23,6 @@ def average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, s
             #### Below needed as the act_in_env returns a list that has length equal to epoch and every element is the average of the score per trace in that epoch
             #### We have to see what is best to do.
             reward_results = np.empty([n_repetitions, param_dict['epochs']])    # quick solution
-            reward_results[rep] = rewards
 
     print('Running one setting takes {} minutes'.format((time.time() - now) / 60))
     learning_curve = np.mean(reward_results, axis=0)  # average over repetitions
@@ -180,5 +179,5 @@ def experiment(method: str, option: str):
             Plot.save('Actor_critic_both.png')
 
 if __name__ == '__main__':
-    experiment(method='actor-critic', option = 'NN')
+    experiment(method='REINFORCE', option = 'alpha')
     # option = 'NN', 'alpha', 'bootstrapping', 'baseline_subtraction', 'boostrapping_baseline'
