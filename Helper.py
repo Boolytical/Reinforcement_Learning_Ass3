@@ -36,7 +36,7 @@ class LearningCurvePlot:
 
     # Save the plot figure given file name
     def save(self, filename):
-        self.ax.legend(prop={'size': 7})
+        self.ax.legend(prop={'size': 8})
         self.fig.savefig(filename, dpi=300)
 
 
