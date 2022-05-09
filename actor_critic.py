@@ -45,6 +45,22 @@ class Actor_Critic_Agent:
                     torch.nn.ReLU(),
                     torch.nn.Linear(self.NN[0], self.NN[1]),
                     torch.nn.Linear(self.NN[1], self.n_actions))
+
+        else:
+            if type == 'actor':
+                model = torch.nn.Sequential(
+                    torch.nn.Linear(self.n_states, self.NN),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(self.NN, self.n_actions),
+                    torch.nn.Softmax(dim=0))
+
+            elif type == 'critic':
+                model = torch.nn.Sequential(
+                    torch.nn.Linear(self.n_states, self.NN),
+                    torch.nn.ReLU(),
+                    torch.nn.Linear(self.NN, self.n_actions))
+
+
         return model  # return initialized model
 
     def memorize(self, s, a, r):
@@ -62,58 +78,56 @@ class Actor_Critic_Agent:
     def choose_action(self, s):
         """ Return action and probability distribution given state. """
         action_probability = self.model_actor(torch.from_numpy(s).float()).detach().numpy()
-        if np.isnan(action_probability).any():
-            print(np.isnan(action_probability).any())
-            print(torch.min(self.model_actor(torch.from_numpy(s).float())))
-            print(torch.max(self.model_actor(torch.from_numpy(s).float())))
-            print(f'States: {s} --- Action Probability: {action_probability}')
         action = np.random.choice(np.arange(0, self.n_actions), p=action_probability)
         return action
 
-    def calculate_psi(self, t):
+    def calculate_psi(self, t, episode_length):
         """ Calculate and save the potential choices psi """
+        m = min(self.n_depth, episode_length-t)
         r_t = torch.Tensor([r for (s, a, r) in self.memory]).flip(dims=(0,))
         s_t = torch.Tensor(np.array([s for (s, a, r) in self.memory]))
 
-        # TODO: avoid that index exceeds length of memorized states
         if self.option == 'bootstrapping':
-            if t + self.n_depth < len(self.memory):
-                s_t_depth = torch.Tensor(s_t[t + self.n_depth])
-                expected_return_per_action = self.model_critic(s_t_depth)  # outputs return values for action 0 and 1
-                value = expected_return_per_action.max()  # to get value of s_t+n, get highest return of output nodes
 
-                Q_value = 0  # Q_n(s_t, a_t)
-                # Total return per timestep of the trace
-                for k in range(self.n_depth - 1):
-                    Q_value += r_t[t + k] + value
-                self.psi_values.append(Q_value)
-            else:
-                self.psi_values.append(0)
+            s_t_depth = torch.Tensor(s_t[t + m])
+            expected_return_per_action = self.model_critic(s_t_depth)  # outputs return values for action 0 and 1
+            value = expected_return_per_action.mean()  # to get value of s_t+n, get highest return of output nodes
+
+            q_val = 0  # Q_n(s_t, a_t)
+            # Total return per timestep of the trace
+            for k in range(m):
+                q_val += r_t[t + k]
+
+            q_val += value
+
+            self.psi_values.append(q_val)
+
 
         elif self.option == 'baseline_subtraction':
             expected_return_per_action_t = self.model_critic(s_t[t])  # Estimated value at timestep t
-            value_substract = expected_return_per_action_t.max()
+            value_substract = expected_return_per_action_t.mean()
 
-            A_val = 0
+            a_val = 0
             for k in range(t, len(self.memory)):  # Compute Q-value
-                A_val += r_t[k] - value_substract
-            self.psi_values.append(A_val)
+                a_val += r_t[k]
+
+            a_val -= value_substract
+            self.psi_values.append(a_val)
 
         elif self.option == 'bootstrapping_baseline':
-            if t + self.n_depth < len(self.memory):
-                s_t_depth = torch.Tensor(s_t[t + self.n_depth])
-                expected_return_per_action = self.model_critic(s_t_depth)  # outputs return values for action 0 and 1
-                value = expected_return_per_action.max()
+            s_t_depth = torch.Tensor(s_t[t + m])
+            expected_return_per_action = self.model_critic(s_t_depth)  # outputs return values for action 0 and 1
+            value = expected_return_per_action.mean()
 
-                expected_return_per_action_t = self.model_critic(s_t[t])  # Estimated value at timestep t
-                value_substract = expected_return_per_action_t.max()
+            expected_return_per_action_t = self.model_critic(s_t[t])  # Estimated value at timestep t
+            value_substract = expected_return_per_action_t.max()
 
-                A_val = 0
-                for k in range(self.n_depth - 1):
-                    A_val += r_t[t + k] + value - value_substract
-                self.psi_values.append(A_val)
-            else:
-                self.psi_values.append(0)
+            a_val = 0
+            for k in range(m):
+                a_val += r_t[t + k]
+
+            a_val = a_val + value - value_substract
+            self.psi_values.append(a_val)
 
         else:
             raise ValueError('{} does not exist as method'.format(self.option))
@@ -142,48 +156,47 @@ class Actor_Critic_Agent:
         return loss_actor, loss_critic
 
 
-def act_in_env(epochs: int, n_traces: int, n_timesteps: int, param_dict: dict):
+def act_in_env(n_traces: int, n_timesteps: int, param_dict: dict):
     env = gym.make('CartPole-v1')  # create environment of CartPole-v1
     agent = Actor_Critic_Agent(env, param_dict)  # initiate the agent
 
-    avg_per_epoch = []
-    for e in range(epochs):
-        env_scores = []  # shows trace length over training time TODO: probably need to collect per epoch as well, otherwise only last epoch rewards are returned
-        for m in range(n_traces):
-            state = env.reset()  # reset environment and get initial state
+    env_scores = []
+    for e in range(n_traces):
 
-            ##### Use current policy to collect a trace
-            for t in range(n_timesteps):
-                action = agent.choose_action(s=state)
-                state_next, reward, done, _ = env.step(action)
-                agent.memorize(s=state, a=action, r=t + reward)
-                state = state_next
+        state = env.reset()  # reset environment and get initial state
 
-                if done:  # Calculate the potential choices
-                    for t in range(len(agent.memory)):
-                        agent.calculate_psi(t=t)
+        ##### Use current policy to collect a trace
+        for t in range(n_timesteps):
+            action = agent.choose_action(s=state)
+            state_next, r, done, _ = env.step(action)
+            agent.memorize(s=state, a=action, r=r)
+            state = state_next
 
-                    env_scores.append(t + 1)
-                    break
+            if done:
+                for step in range(len(agent.memory)):
+                    agent.calculate_psi(t=step, episode_length=t) # if done, then calculate for every t Q_n(s_t, a_t)
 
-            loss_actor, loss_critic = agent.loss()  # after trace is done, calculate loss for actor and critic
+                env_scores.append(t + 1)
+                break
 
-            ##### After every trace, update networks
-            # Update actor NN
-            agent.optimizer_actor.zero_grad()
-            loss_actor.backward()
-            agent.optimizer_actor.step()
+        loss_actor, loss_critic = agent.loss()  # after trace is done, calculate loss for actor and critic
 
-            # Update critic NN
-            agent.optimizer_critic.zero_grad()
-            loss_critic.backward()
-            agent.optimizer_critic.step()
+        ##### After every trace, update networks
+        # Update actor NN
+        agent.optimizer_actor.zero_grad()
+        loss_actor.backward()
+        agent.optimizer_actor.step()
 
-            agent.forget()
+        # Update critic NN
+        agent.optimizer_critic.zero_grad()
+        loss_critic.backward()
+        agent.optimizer_critic.step()
+
+        agent.forget()
 
         if e % 50 == 0 and e > 0:
-            print('Epoch {}     Average Score: {}'.format(e, np.mean(env_scores)))
-        avg_per_epoch.append(np.mean(env_scores))
+            print('Epoch {}  ---   Average Score of last 50 epochs: {}'.format(e, np.mean(env_scores[-50:])))
 
     env.close()
-    return avg_per_epoch
+    return env_scores
+
