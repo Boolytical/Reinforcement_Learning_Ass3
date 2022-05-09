@@ -22,9 +22,6 @@ def average_over_repetitions(n_repetitions, n_traces, n_timesteps, param_dict, s
             rewards = actor_critic.act_in_env(n_traces=n_traces,
                                               n_timesteps=n_timesteps, param_dict=param_dict)
 
-            #### Below needed as the act_in_env returns a list that has length equal to epoch and every element is the average of the score per trace in that epoch
-            #### We have to see what is best to do.
-            reward_results = np.empty([n_repetitions, param_dict['epochs']])    # quick solution
             reward_results[rep] = rewards
 
     print('Running one setting takes {} minutes'.format((time.time() - now) / 60))
@@ -161,32 +158,31 @@ def experiment(method: str, option: str):
             Plot = LearningCurvePlot(title=f'{method} with Baseline Subtraction\nAveraged results over {n_repetitions} repetitions')
             Plot2 = LearningCurvePlot(title=f'{method} with Baseline Subtraction\nAveraged results over {n_repetitions} repetitions')
             for alpha in learning_rate:
-                for depth in n_depth:
-                    param_dict = {
-                        'alpha': alpha,
-                        'n_depth': np.infty,
-                        'option': option,
-                        'NN': NN
-                    }
+                param_dict = {
+                    'alpha': alpha,
+                    'n_depth': np.infty,
+                    'option': option,
+                    'NN': NN
+                }
 
-                    print(f'Running {method}-method with {option}: learning rate = {alpha} and depth {depth}')
+                print(f'Running {method}-method with {option}: learning rate = {alpha}')
 
-                    learning_curve, standard_error = average_over_repetitions(n_repetitions, n_traces, n_timesteps,
-                                                                              param_dict,
-                                                                              smoothing_window, method)
-                    Plot.add_curve(x=np.arange(1, len(learning_curve) + 1),
-                                   y=learning_curve,
-                                   std=standard_error,
-                                   col=colours[run],
-                                   label=r'$\alpha$={} and depth = {}'.format(alpha, depth))
+                learning_curve, standard_error = average_over_repetitions(n_repetitions, n_traces, n_timesteps,
+                                                                            param_dict,
+                                                                            smoothing_window, method)
+                Plot.add_curve(x=np.arange(1, len(learning_curve) + 1),
+                                y=learning_curve,
+                                std=standard_error,
+                                col=colours[run],
+                                label=r'$\alpha$={}'.format(alpha))
 
-                    Plot2.add_curve(x=np.arange(1, len(learning_curve) + 1),
-                                    y=learning_curve,
-                                    col=colours[run],
-                                    label=r'$\alpha$={} and depth = {}'.format(alpha, depth))
-                    run += 1
-                Plot.save('Actor_critic_baseline_subtraction_std.png')
-                Plot2.save('Actor_critic_baseline_subtraction.png')
+                Plot2.add_curve(x=np.arange(1, len(learning_curve) + 1),
+                                y=learning_curve,
+                                col=colours[run],
+                                label=r'$\alpha$={}'.format(alpha))
+                run += 1
+            Plot.save('Actor_critic_baseline_subtraction_std.png')
+            Plot2.save('Actor_critic_baseline_subtraction.png')
 
         elif option == 'bootstrapping_baseline':
             ### Method: Actor-critic with bootstrapping and baseline subtraction
