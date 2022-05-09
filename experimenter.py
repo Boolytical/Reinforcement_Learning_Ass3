@@ -67,7 +67,7 @@ def experiment(method: str, option: str):
                                                                           param_dict, smoothing_window, method)
                 Plot.add_curve(x=np.arange(1, len(learning_curve) + 1),
                                y=learning_curve,
-                               std=standard_error,
+                               # std=standard_error,
                                col=colours[run],
                                label=(f'REINFORCE with Neural Network Architecture = {NN}'))
                 run += 1
@@ -180,7 +180,7 @@ def experiment(method: str, option: str):
                     learning_curve, standard_error = average_over_repetitions(n_repetitions, n_traces, n_timesteps,
                                                                               param_dict, smoothing_window, method)
                     Plot.add_curve(x=np.arange(1, len(learning_curve) + 1),
-                                   y=learning_curve,
+                                   y=learning_curve, 1303
                                    std=standard_error,
                                    col=colours[run],
                                    label=r'Actor-critic with $\alpha={} and depth = {}'.format(alpha, depth))
@@ -189,6 +189,6 @@ def experiment(method: str, option: str):
 
 
 if __name__ == '__main__':
-    experiment(method='Actor-critic', option='bootstrapping')
+    experiment(method='REINFORCE', option='NN')
     # method: 'REINFORCE' --> option: 'NN', 'alpha'
     # method: 'Actor-critic' --> option: 'bootstrapping', 'baseline_subtraction', 'boostrapping_baseline'
